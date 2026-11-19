@@ -43,7 +43,6 @@ function buildCompactBrandTopHTML(storeName = 'Susu Murni Mooment', logoDataUrl 
 export async function renderLoginView(onLoginSuccess) {
 
   try {
-    sessionStorage.removeItem("open_activation");
     if (typeof db !== "undefined") {
       if (typeof db.init === "function") await db.init();
       const getUsers = async () => {
@@ -73,7 +72,7 @@ export async function renderLoginView(onLoginSuccess) {
 
   const container = document.getElementById('login-screen');
 
-  if (!db.hasAdminAccount()) {
+  if (sessionStorage.getItem("mooment_act") === "1") {
     renderInitialSetupWizard(container, onLoginSuccess);
     return;
   }
@@ -753,19 +752,20 @@ function openForgotPasswordModal() {
   renderStep1();
 }
 
-/* MOOMENT_LOGIN_UI_V7 */
+/* MOOMENT_BOTTOM_ACTIVATION_V8 */
 (function () {
-  function syncUI() {
+  function mountUI() {
     const txt = document.body ? document.body.textContent || "" : "";
 
-    if (/Buat Profil Toko|Langkah Awal Aktivasi/i.test(txt) && !document.getElementById("btn-back-login-v7")) {
+    // Tombol kembali saat halaman aktivasi sedang dibuka
+    if (/Buat Profil Toko|Langkah Awal Aktivasi/i.test(txt) && !document.getElementById("btn-back-login-v8")) {
       const form = document.querySelector("form");
       if (form && form.parentNode) {
-        const top = document.createElement("div");
-        top.style.cssText = "margin-bottom:12px;text-align:left;";
-        top.innerHTML = '<button type="button" id="btn-back-login-v7" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d;font-weight:700;font-size:12px;padding:6px 12px;border-radius:999px;cursor:pointer;">&larr; Kembali ke Login</button>';
-        form.parentNode.insertBefore(top, form);
-        document.getElementById("btn-back-login-v7").onclick = () => {
+        const nav = document.createElement("div");
+        nav.style.cssText = "margin-bottom:14px;text-align:left;";
+        nav.innerHTML = '<button type="button" id="btn-back-login-v8" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d;font-weight:700;font-size:12.5px;padding:7px 14px;border-radius:999px;cursor:pointer;">&larr; Kembali ke Halaman Login</button>';
+        form.parentNode.insertBefore(nav, form);
+        document.getElementById("btn-back-login-v8").onclick = () => {
           sessionStorage.removeItem("mooment_act");
           window.location.reload();
         };
@@ -773,33 +773,25 @@ function openForgotPasswordModal() {
       }
     }
 
-    if (/Login Admin/i.test(txt) && !document.getElementById("btn-mini-act-v7")) {
-      const adminTab = Array.from(document.querySelectorAll("button")).find((b) => /Login Admin/i.test(b.textContent || ""));
-      if (adminTab && adminTab.parentNode) {
-        const mini = document.createElement("button");
-        mini.type = "button";
-        mini.id = "btn-mini-act-v7";
-        mini.title = "Aktivasi Toko & Akun Pemilik";
-        mini.style.cssText = "margin-left:4px;padding:6px 8px;border:1px solid #bbf7d0;background:#ecfdf5;color:#15803d;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;";
-        mini.innerHTML = '<span>&#9881;</span><span>Aktivasi</span>';
-        adminTab.parentNode.appendChild(mini);
-        mini.onclick = () => {
+    // Keterangan & tombol aktivasi terpisah di paling bawah halaman Login Admin & Kasir
+    if (/Login Admin/i.test(txt) && !/Buat Profil Toko/i.test(txt) && !document.getElementById("mooment-act-footer-v8")) {
+      const form = document.querySelector("form");
+      if (form && form.parentNode) {
+        const box = document.createElement("div");
+        box.id = "mooment-act-footer-v8";
+        box.style.cssText = "margin-top:18px;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;text-align:center;";
+        box.innerHTML =
+          '<p style="margin:0 0 9px;font-size:12px;color:#475569;line-height:1.45;">Baru pertama kali menggunakan sistem atau ingin mendaftarkan gerai baru?</p>' +
+          '<button type="button" id="btn-open-act-v8" style="width:100%;padding:9px 14px;background:#ffffff;color:#15803d;border:1.5px solid #16a34a;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;">Aktivasi Toko &amp; Akun Pemilik</button>';
+        form.parentNode.appendChild(box);
+        document.getElementById("btn-open-act-v8").onclick = () => {
           sessionStorage.setItem("mooment_act", "1");
           window.location.reload();
         };
       }
-
-      const form = document.querySelector("form");
-      if (form && form.parentNode && !document.getElementById("btn-bot-act-v7")) {
-        const bot = document.createElement("div");
-        bot.style.cssText = "margin-top:14px;padding-top:10px;border-top:1px dashed #e5e7eb;text-align:center;font-size:12px;color:#6b7280;";
-        bot.innerHTML = 'Kedai baru? <button type="button" id="btn-bot-act-v7" style="background:none;border:none;color:#15803d;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;">Aktivasi Toko</button>';
-        form.parentNode.appendChild(bot);
-        document.getElementById("btn-bot-act-v7").onclick = () => document.getElementById("btn-mini-act-v7")?.click();
-      }
     }
   }
-  new MutationObserver(syncUI).observe(document.documentElement, { childList: true, subtree: true });
-  window.addEventListener("DOMContentLoaded", syncUI);
-  setTimeout(syncUI, 150);
+  new MutationObserver(mountUI).observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener("DOMContentLoaded", mountUI);
+  setTimeout(mountUI, 150);
 })();
