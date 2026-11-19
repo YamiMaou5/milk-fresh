@@ -43,29 +43,33 @@ function buildCompactBrandTopHTML(storeName = 'Susu Murni Mooment', logoDataUrl 
 export async function renderLoginView(onLoginSuccess) {
 
   try {
-    if (typeof db !== "undefined" && sessionStorage.getItem("open_activation") !== "1") {
+    sessionStorage.removeItem("open_activation");
+    if (typeof db !== "undefined") {
       if (typeof db.init === "function") await db.init();
-      const users = (typeof db.getAll === "function" ? await db.getAll("users") : []) || [];
-      if (!users.some((u) => u && (u.role === "owner" || u.role === "admin"))) {
-        const pwA = typeof hashPassword === "function" ? await hashPassword("owner123") : "owner123";
-        const uOwner = { id: "usr-owner-1", name: "Owner Mooment", username: "owner", password: pwA, passwordHash: pwA, role: "owner", email: "owner@mooment.id", active: true };
-        if (typeof db.put === "function") await db.put("users", uOwner);
-        else if (typeof db.add === "function") await db.add("users", uOwner);
+      const getUsers = async () => {
+        if (typeof db.getUsers === "function") return await db.getUsers();
+        if (typeof db.getAll === "function") return await db.getAll("users");
+        if (Array.isArray(db.data?.users)) return db.data.users;
+        return [];
+      };
+      const saveUser = async (u) => {
+        if (typeof db.addUser === "function") return await db.addUser(u);
+        if (typeof db.saveUser === "function") return await db.saveUser(u);
+        if (typeof db.put === "function") return await db.put("users", u);
+        if (typeof db.add === "function") return await db.add("users", u);
+        if (Array.isArray(db.data?.users)) { db.data.users.push(u); if (typeof db.save === "function") db.save(); }
+      };
+      const list = (await getUsers()) || [];
+      if (!list.some((u) => u && (u.role === "owner" || u.role === "admin"))) {
+        const pw = typeof hashPassword === "function" ? await hashPassword("owner123") : "owner123";
+        await saveUser({ id: "usr-owner-1", name: "Owner Mooment", username: "owner", password: pw, passwordHash: pw, role: "owner", email: "owner@mooment.id", active: true });
       }
-      if (!users.some((u) => u && u.role === "kasir")) {
+      if (!list.some((u) => u && u.role === "kasir")) {
         const pwK = typeof hashPassword === "function" ? await hashPassword("kasir123") : "kasir123";
-        const uKasir = { id: "usr-kasir-1", name: "Sari", username: "kasir", password: pwK, passwordHash: pwK, role: "kasir", active: true };
-        if (typeof db.put === "function") await db.put("users", uKasir);
-        else if (typeof db.add === "function") await db.add("users", uKasir);
-      }
-      if (typeof db.getSettings === "function" && typeof db.saveSettings === "function") {
-        const st = (await db.getSettings()) || {};
-        if (!st.storeName || st.storeName === "MILK FRESH POS") {
-          await db.saveSettings({ ...st, storeName: "Susu Murni Mooment", setupCompleted: true, isActivated: true, activated: true });
-        }
+        await saveUser({ id: "usr-kasir-1", name: "Sari", username: "kasir", password: pwK, passwordHash: pwK, role: "kasir", active: true });
       }
     }
-  } catch (e) { console.warn("Seed login:", e); }
+  } catch (e) { console.warn("Default seed:", e); }
 
   const container = document.getElementById('login-screen');
 
@@ -749,57 +753,53 @@ function openForgotPasswordModal() {
   renderStep1();
 }
 
-/* MOOMENT_UI_CLEAN_V5 */
+/* MOOMENT_LOGIN_UI_V7 */
 (function () {
-  function applyUI() {
+  function syncUI() {
     const txt = document.body ? document.body.textContent || "" : "";
 
-    if (/Buat Profil Toko/i.test(txt) && !document.getElementById("btn-back-login-v5")) {
+    if (/Buat Profil Toko|Langkah Awal Aktivasi/i.test(txt) && !document.getElementById("btn-back-login-v7")) {
       const form = document.querySelector("form");
       if (form && form.parentNode) {
-        const bar = document.createElement("div");
-        bar.style.cssText = "margin-bottom:12px;text-align:left;";
-        bar.innerHTML = '<button type="button" id="btn-back-login-v5" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d;font-weight:700;font-size:12px;padding:6px 12px;border-radius:999px;cursor:pointer;">&larr; Kembali ke Login</button>';
-        form.parentNode.insertBefore(bar, form);
-        document.getElementById("btn-back-login-v5").onclick = () => {
-          sessionStorage.removeItem("open_activation");
+        const top = document.createElement("div");
+        top.style.cssText = "margin-bottom:12px;text-align:left;";
+        top.innerHTML = '<button type="button" id="btn-back-login-v7" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d;font-weight:700;font-size:12px;padding:6px 12px;border-radius:999px;cursor:pointer;">&larr; Kembali ke Login</button>';
+        form.parentNode.insertBefore(top, form);
+        document.getElementById("btn-back-login-v7").onclick = () => {
+          sessionStorage.removeItem("mooment_act");
           window.location.reload();
         };
+        form.addEventListener("submit", () => sessionStorage.removeItem("mooment_act"));
       }
     }
 
-    if (/Login Admin/i.test(txt) && !document.getElementById("btn-mini-act-v5")) {
+    if (/Login Admin/i.test(txt) && !document.getElementById("btn-mini-act-v7")) {
       const adminTab = Array.from(document.querySelectorAll("button")).find((b) => /Login Admin/i.test(b.textContent || ""));
       if (adminTab && adminTab.parentNode) {
         const mini = document.createElement("button");
         mini.type = "button";
-        mini.id = "btn-mini-act-v5";
+        mini.id = "btn-mini-act-v7";
         mini.title = "Aktivasi Toko & Akun Pemilik";
         mini.style.cssText = "margin-left:4px;padding:6px 8px;border:1px solid #bbf7d0;background:#ecfdf5;color:#15803d;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;";
         mini.innerHTML = '<span>&#9881;</span><span>Aktivasi</span>';
         adminTab.parentNode.appendChild(mini);
-        mini.onclick = async () => {
-          sessionStorage.setItem("open_activation", "1");
-          try {
-            const dbs = await indexedDB.databases();
-            for (const d of dbs) if (d.name) indexedDB.deleteDatabase(d.name);
-          } catch (_) {}
-          localStorage.clear();
+        mini.onclick = () => {
+          sessionStorage.setItem("mooment_act", "1");
           window.location.reload();
         };
       }
 
       const form = document.querySelector("form");
-      if (form && form.parentNode && !document.getElementById("btn-bot-act-v5")) {
+      if (form && form.parentNode && !document.getElementById("btn-bot-act-v7")) {
         const bot = document.createElement("div");
         bot.style.cssText = "margin-top:14px;padding-top:10px;border-top:1px dashed #e5e7eb;text-align:center;font-size:12px;color:#6b7280;";
-        bot.innerHTML = 'Kedai baru? <button type="button" id="btn-bot-act-v5" style="background:none;border:none;color:#15803d;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;">Aktivasi Toko</button>';
+        bot.innerHTML = 'Kedai baru? <button type="button" id="btn-bot-act-v7" style="background:none;border:none;color:#15803d;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;">Aktivasi Toko</button>';
         form.parentNode.appendChild(bot);
-        document.getElementById("btn-bot-act-v5").onclick = () => document.getElementById("btn-mini-act-v5")?.click();
+        document.getElementById("btn-bot-act-v7").onclick = () => document.getElementById("btn-mini-act-v7")?.click();
       }
     }
   }
-  new MutationObserver(applyUI).observe(document.documentElement, { childList: true, subtree: true });
-  window.addEventListener("DOMContentLoaded", applyUI);
-  setTimeout(applyUI, 200);
+  new MutationObserver(syncUI).observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener("DOMContentLoaded", syncUI);
+  setTimeout(syncUI, 150);
 })();
