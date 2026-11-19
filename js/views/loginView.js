@@ -45,17 +45,30 @@ export async function renderLoginView(onLoginSuccess) {
   try {
     if (typeof db !== "undefined") {
       if (typeof db.init === "function") await db.init();
-      const users = (typeof db.getAll === "function" ? await db.getAll("users") : []) || [];
-      if (!users.some((u) => u && (u.role === "owner" || u.role === "admin"))) {
+      const getUsers = async () => {
+        if (typeof db.getUsers === "function") return await db.getUsers();
+        if (typeof db.getAll === "function") return await db.getAll("users");
+        if (Array.isArray(db.data?.users)) return db.data.users;
+        return [];
+      };
+      const saveUser = async (u) => {
+        if (typeof db.addUser === "function") return await db.addUser(u);
+        if (typeof db.saveUser === "function") return await db.saveUser(u);
+        if (typeof db.put === "function") return await db.put("users", u);
+        if (typeof db.add === "function") return await db.add("users", u);
+        if (Array.isArray(db.data?.users)) { db.data.users.push(u); if (typeof db.save === "function") db.save(); }
+      };
+      const list = (await getUsers()) || [];
+      if (!list.some((u) => u && (u.role === "owner" || u.role === "admin"))) {
         const pw = typeof hashPassword === "function" ? await hashPassword("owner123") : "owner123";
-        await db.put("users", { id: "usr-owner-1", name: "Mahmud", fullName: "Mahmud", username: "owner", password: pw, passwordHash: pw, role: "owner", active: true });
+        await saveUser({ id: "usr-owner-1", name: "Owner Mooment", username: "owner", password: pw, passwordHash: pw, role: "owner", email: "owner@mooment.id", active: true });
       }
-      if (!users.some((u) => u && u.role === "kasir")) {
+      if (!list.some((u) => u && u.role === "kasir")) {
         const pwK = typeof hashPassword === "function" ? await hashPassword("kasir123") : "kasir123";
-        await db.put("users", { id: "usr-kasir-1", name: "Sari", fullName: "Sari", username: "kasir", password: pwK, passwordHash: pwK, role: "kasir", active: true });
+        await saveUser({ id: "usr-kasir-1", name: "Sari", username: "kasir", password: pwK, passwordHash: pwK, role: "kasir", active: true });
       }
     }
-  } catch (_) {}
+  } catch (e) { console.warn("Default seed:", e); }
 
   const container = document.getElementById('login-screen');
 
@@ -739,12 +752,76 @@ function openForgotPasswordModal() {
   renderStep1();
 }
 
-/* MOOMENT_CLEAN_LOGIN_V60 */
+
+/* MOOMENT_LOCAL_LOGIN_V1 */
+(function moomentLoginLocal() {
+  let lastSpoken = 0;
+
+  function fireWrongCredentialFeedback(customMsg) {
+    const now = Date.now();
+    if (now - lastSpoken < 1200) return;
+    lastSpoken = now;
+
+    const msg = customMsg || 'Username atau password salah! Silakan periksa kembali.';
+    const form = document.querySelector('form');
+    if (form) {
+      let banner = document.getElementById('m-login-err-box');
+      if (!banner) {
+        banner = document.createElement('div');
+        banner.id = 'm-login-err-box';
+        banner.style.cssText = 'margin:10px 0;padding:11px 13px;background:#fef2f2;border:1.5px solid #ef4444;color:#991b1b;border-radius:10px;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:8px;';
+        form.insertBefore(banner, form.querySelector('button[type="submit"]') || null);
+      }
+      banner.innerHTML = '<span style="font-size:16px;">&#9888;</span><span>' + msg + '</span>';
+    }
+
+    try {
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) {
+        const ctx = new Ctx();
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(340, ctx.currentTime);
+        osc.frequency.setValueAtTime(210, ctx.currentTime + 0.16);
+        g.gain.setValueAtTime(0.32, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.42);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(); osc.stop(ctx.currentTime + 0.42);
+      }
+    } catch (_) {}
+
+    try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance('Username atau password salah, silakan periksa kembali');
+        u.lang = 'id-ID';
+        u.rate = 1.0;
+        window.__playMoomentKling && window.__playMoomentKling();
+      }
+    } catch (_) {}
+  }
+
+  document.addEventListener('submit', (e) => {
+    const form = e.target;
+    if (!form || !form.querySelector('input[type="password"]')) return;
+    setTimeout(() => {
+      if (document.querySelector('input[type="password"]')) {
+        const errNode = Array.from(document.querySelectorAll('div, p, span')).find((el) =>
+          el.id !== 'm-login-err-box' && /salah|tidak ditemukan|gagal|invalid|nonaktif/i.test(el.textContent || '') && (el.textContent || '').length < 140
+        );
+        fireWrongCredentialFeedback(errNode ? errNode.textContent.trim() : null);
+      }
+    }, 350);
+  }, true);
+})();
+/* MOOMENT_KLING_ONLY_V62 */
 (function () {
   let lastKling = 0;
-  function playKlingWarning() {
+  window.__playMoomentKling = function () {
     const now = Date.now();
-    if (now - lastKling < 900) return;
+    if (now - lastKling < 650) return;
     lastKling = now;
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
@@ -755,79 +832,18 @@ function openForgotPasswordModal() {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
-      osc.frequency.setValueAtTime(1174.66, t);
-      osc.frequency.setValueAtTime(987.77, t + 0.11);
-      gain.gain.setValueAtTime(0.28, t);
+      osc.frequency.setValueAtTime(1318.5, t);
+      osc.frequency.setValueAtTime(1760.0, t + 0.09);
+      gain.gain.setValueAtTime(0.30, t);
       gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start(t);
       osc.stop(t + 0.45);
     } catch (_) {}
+  };
+  if ("speechSynthesis" in window) {
+    try { window.speechSynthesis.cancel(); } catch (_) {}
+    window.speechSynthesis.speak = function () { window.__playMoomentKling(); };
   }
-
-  function showWrongAlert(msg) {
-    playKlingWarning();
-    const form = document.querySelector("form");
-    if (!form) return;
-    let box = document.getElementById("m-login-warn");
-    if (!box) {
-      box = document.createElement("div");
-      box.id = "m-login-warn";
-      box.style.cssText = "margin:10px 0;padding:10px 12px;background:#fef2f2;border:1.5px solid #ef4444;color:#991b1b;border-radius:10px;font-size:12.5px;font-weight:700;";
-      form.insertBefore(box, form.querySelector("button[type='submit']") || null);
-    }
-    box.textContent = "Peringatan: " + (msg || "Username atau password salah! Silakan periksa kembali.");
-  }
-
-  function mountLoginExtras() {
-    const txt = document.body ? document.body.textContent || "" : "";
-    if (/Buat Profil Toko|Langkah Awal Aktivasi/i.test(txt) && !document.getElementById("m-back-login")) {
-      const form = document.querySelector("form");
-      if (form && form.parentNode) {
-        const nav = document.createElement("div");
-        nav.style.cssText = "margin-bottom:12px;text-align:left;";
-        nav.innerHTML = '<button type="button" id="m-back-login" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d;font-weight:700;font-size:12px;padding:6px 12px;border-radius:999px;cursor:pointer;">&larr; Kembali ke Halaman Login</button>';
-        form.parentNode.insertBefore(nav, form);
-        document.getElementById("m-back-login").onclick = () => {
-          sessionStorage.removeItem("mooment_act");
-          window.location.reload();
-        };
-        form.addEventListener("submit", () => sessionStorage.removeItem("mooment_act"));
-      }
-    }
-
-    if (/Login Admin/i.test(txt) && !/Buat Profil Toko/i.test(txt) && !document.getElementById("m-act-footer")) {
-      const form = document.querySelector("form");
-      if (form && form.parentNode) {
-        const box = document.createElement("div");
-        box.id = "m-act-footer";
-        box.style.cssText = "margin-top:16px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;text-align:center;";
-        box.innerHTML =
-          '<p style="margin:0 0 8px;font-size:12px;color:#475569;">Ingin mengatur ulang profil kedai atau akun pemilik baru?</p>' +
-          '<button type="button" id="m-open-act" style="width:100%;padding:9px;background:#fff;color:#15803d;border:1.5px solid #16a34a;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;">Aktivasi Toko &amp; Akun Pemilik</button>';
-        form.parentNode.appendChild(box);
-        document.getElementById("m-open-act").onclick = () => {
-          sessionStorage.setItem("mooment_act", "1");
-          window.location.reload();
-        };
-      }
-    }
-  }
-
-  document.addEventListener("submit", (e) => {
-    const form = e.target;
-    if (!form || !form.querySelector("input[type='password']")) return;
-    setTimeout(() => {
-      if (document.querySelector("input[type='password']")) {
-        const err = Array.from(document.querySelectorAll("div, p, span")).find((el) =>
-          el.id !== "m-login-warn" && /salah|tidak ditemukan|gagal|invalid|nonaktif/i.test(el.textContent || "") && (el.textContent || "").length < 140
-        );
-        showWrongAlert(err ? err.textContent.trim() : null);
-      }
-    }, 320);
-  }, true);
-
-  new MutationObserver(mountLoginExtras).observe(document.documentElement, { childList: true, subtree: true });
-  setTimeout(mountLoginExtras, 150);
 })();

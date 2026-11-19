@@ -18,12 +18,12 @@ export function renderSettingsView() {
   function openEditAccountModal(user) {
     const isAdminAccount = user.role === 'admin';
     openModal({
-      title: `Edit Akun ${isAdminAccount ? 'Admin' : 'Kasir'} — ${(user.fullName || user.name || user.username || "Kasir")}`,
+      title: `Edit Akun ${isAdminAccount ? 'Admin' : 'Kasir'} — ${((user.fullName || user.name || user.username || "Kasir") || user.name || user.username || "Kasir")}`,
       bodyHTML: `
         <form id="edit-account-form" autocomplete="off">
           <div class="form-group">
             <label class="form-label">Nama Lengkap *</label>
-            <input type="text" id="edt-acc-name" class="form-control" value="${escapeHTML(user.fullName)}" required />
+            <input type="text" id="edt-acc-name" class="form-control" value="${escapeHTML((user.fullName || user.name || user.username || "Kasir"))}" required />
           </div>
           <div class="form-group">
             <label class="form-label">Username Login *</label>
@@ -83,12 +83,12 @@ export function renderSettingsView() {
       db.save();
 
       if (auth.getUser()?.id === user.id) {
-        document.getElementById('sidebar-user-name').textContent = user.fullName;
+        document.getElementById('sidebar-user-name').textContent = (user.fullName || user.name || user.username || "Kasir");
         document.getElementById('sidebar-user-username').textContent = `@${user.username}`;
       }
 
       closeModal();
-      showToast(`Data akun ${(user.fullName || user.name || user.username || "Kasir")} berhasil diperbarui.`, 'success');
+      showToast(`Data akun ${((user.fullName || user.name || user.username || "Kasir") || user.name || user.username || "Kasir")} berhasil diperbarui.`, 'success');
       render();
     });
   }
@@ -202,7 +202,7 @@ export function renderSettingsView() {
                     return `
                       <tr>
                         <td>
-                          <strong>${escapeHTML(u.fullName)}</strong>
+                          <strong>${escapeHTML((u.fullName || u.name || u.username || "Kasir"))}</strong>
                           <small style="color:var(--text-muted);">(@${escapeHTML(u.username)})</small><br/>
                           <small style="color:var(--text-secondary);">
                             ${isAdm && u.email ? `Gmail: ${escapeHTML(u.email)}<br/>` : ''}
@@ -363,11 +363,11 @@ export function renderSettingsView() {
         const uid = btn.getAttribute('data-reset-pw');
         const target = db.data.users.find((u) => u.id === uid);
         if (!target) return;
-        const newPw = window.prompt(`Masukkan password baru untuk ${(target.fullName || target.name || target.username || "Kasir")} (minimal 6 karakter):`);
+        const newPw = window.prompt(`Masukkan password baru untuk ${((target.fullName || target.name || target.username || "Kasir") || target.name || target.username || "Kasir")} (minimal 6 karakter):`);
         if (!newPw) return;
         try {
           await auth.resetPasswordDirect(uid, newPw, 'Reset oleh Admin');
-          showToast(`Password untuk ${(target.fullName || target.name || target.username || "Kasir")} berhasil diubah.`, 'success');
+          showToast(`Password untuk ${((target.fullName || target.name || target.username || "Kasir") || target.name || target.username || "Kasir")} berhasil diubah.`, 'success');
         } catch (err) {
           showToast(err.message, 'error');
         }
@@ -381,7 +381,7 @@ export function renderSettingsView() {
         if (!target || target.role === 'admin') return;
         target.active = !target.active;
         db.save();
-        showToast(`Status akun ${(target.fullName || target.name || target.username || "Kasir")} diperbarui.`, 'info');
+        showToast(`Status akun ${((target.fullName || target.name || target.username || "Kasir") || target.name || target.username || "Kasir")} diperbarui.`, 'info');
         render();
       });
     });
@@ -449,32 +449,41 @@ export function renderSettingsView() {
 
 
 
-/* MOOMENT_CLEAN_SETTINGS_V60 */
-(function () {
-  function playKlingError() {
+
+/* MOOMENT_LOCAL_SETTINGS_V1 */
+(function moomentSettingsLocal() {
+  function playPinError(msg) {
     try {
       const Ctx = window.AudioContext || window.webkitAudioContext;
-      if (!Ctx) return;
-      const ctx = new Ctx();
-      if (ctx.state === "suspended") ctx.resume();
-      const t = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
-      osc.type = "sine";
-      osc.frequency.setValueAtTime(1174.66, t);
-      osc.frequency.setValueAtTime(987.77, t + 0.11);
-      g.gain.setValueAtTime(0.28, t);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
-      osc.connect(g); g.connect(ctx.destination);
-      osc.start(t); osc.stop(t + 0.45);
+      if (Ctx) {
+        const ctx = new Ctx();
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, ctx.currentTime);
+        osc.frequency.setValueAtTime(160, ctx.currentTime + 0.15);
+        g.gain.setValueAtTime(0.28, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(); osc.stop(ctx.currentTime + 0.35);
+      }
+    } catch (_) {}
+    try {
+      if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+        const u = new SpeechSynthesisUtterance(msg);
+        u.lang = 'id-ID';
+        window.__playMoomentKling && window.__playMoomentKling();
+      }
     } catch (_) {}
   }
 
-  function showPinDeleteModal(displayName, username, onConfirmed) {
-    document.getElementById("m-pin-modal")?.remove();
-    const ov = document.createElement("div");
-    ov.id = "m-pin-modal";
-    ov.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999;";
+  function showPinModal(displayName, username, onConfirmed) {
+    document.getElementById('m-pin-modal')?.remove();
+    const ov = document.createElement('div');
+    ov.id = 'm-pin-modal';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999;';
     ov.innerHTML =
       '<div style="width:100%;max-width:370px;background:#fff;border-radius:18px;padding:22px;box-shadow:0 20px 40px rgba(0,0,0,.22);">' +
         '<h3 style="margin:0 0 6px;font-size:17px;font-weight:800;color:#991b1b;">Hapus Akun Kasir</h3>' +
@@ -487,21 +496,21 @@ export function renderSettingsView() {
         '</div>' +
       '</div>';
     document.body.appendChild(ov);
-    const inp = document.getElementById("m-pin-input");
-    const err = document.getElementById("m-pin-err");
+    const inp = document.getElementById('m-pin-input');
+    const err = document.getElementById('m-pin-err');
     inp?.focus();
-    document.getElementById("m-pin-cancel").onclick = () => ov.remove();
-    document.getElementById("m-pin-ok").onclick = async () => {
-      const entered = String(inp?.value || "").trim();
-      let pin = "123456";
+    document.getElementById('m-pin-cancel').onclick = () => ov.remove();
+    document.getElementById('m-pin-ok').onclick = async () => {
+      const entered = String(inp?.value || '').trim();
+      let pin = '123456';
       try {
-        const st = typeof db !== "undefined" && db.getSettings ? await db.getSettings() : {};
+        const st = typeof db !== 'undefined' && db.getSettings ? await db.getSettings() : {};
         if (st && st.adminPin) pin = String(st.adminPin).trim();
       } catch (_) {}
       if (!entered || entered !== pin) {
-        err.textContent = "PIN Admin salah! Penghapusan akun kasir dibatalkan.";
-        err.style.display = "block";
-        playKlingError();
+        err.textContent = 'PIN Admin salah! Penghapusan akun kasir dibatalkan.';
+        err.style.display = 'block';
+        playPinError('PIN Admin salah, penghapusan dibatalkan');
         return;
       }
       ov.remove();
@@ -509,19 +518,31 @@ export function renderSettingsView() {
     };
   }
 
-  async function mountKasirPinControls() {
-    const addKasirBtn = Array.from(document.querySelectorAll("button")).find((b) => /Buat Akun Kasir/i.test(b.textContent || ""));
+  async function injectPinControls() {
+    const addKasirBtn = Array.from(document.querySelectorAll('button')).find((b) => /Buat Akun Kasir/i.test(b.textContent || ''));
     if (!addKasirBtn) return;
 
-    if (!document.getElementById("m-pin-bar")) {
-      let pin = "123456";
+    try {
+      if (typeof db !== 'undefined' && db.getAll && db.put) {
+        const list = (await db.getAll('users')) || [];
+        for (const u of list) {
+          if (u && (!u.fullName || !u.name)) {
+            const fixed = u.fullName || u.name || (u.username === 'kasir' ? 'Sari' : u.username);
+            await db.put('users', { ...u, name: fixed, fullName: fixed });
+          }
+        }
+      }
+    } catch (_) {}
+
+    if (!document.getElementById('m-pin-bar')) {
+      let pin = '123456';
       try {
-        const st = typeof db !== "undefined" && db.getSettings ? await db.getSettings() : {};
+        const st = typeof db !== 'undefined' && db.getSettings ? await db.getSettings() : {};
         if (st && st.adminPin) pin = st.adminPin;
       } catch (_) {}
-      const bar = document.createElement("div");
-      bar.id = "m-pin-bar";
-      bar.style.cssText = "margin:10px 0 14px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;";
+      const bar = document.createElement('div');
+      bar.id = 'm-pin-bar';
+      bar.style.cssText = 'margin:10px 0 14px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;';
       bar.innerHTML =
         '<span style="font-size:12px;color:#334155;"><strong>PIN Hapus Akun Kasir:</strong></span>' +
         '<div style="display:flex;gap:6px;align-items:center;">' +
@@ -529,45 +550,45 @@ export function renderSettingsView() {
           '<button type="button" id="m-pin-save-btn" style="padding:6px 11px;background:#14532d;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">Simpan PIN</button>' +
         '</div>';
       addKasirBtn.parentNode.insertBefore(bar, addKasirBtn.nextSibling);
-      document.getElementById("m-pin-save-btn").onclick = async () => {
-        const v = String(document.getElementById("m-pin-cfg")?.value || "").trim();
-        if (v.length < 4) return alert("PIN minimal 4 angka.");
-        const st = typeof db !== "undefined" && db.getSettings ? (await db.getSettings()) || {} : {};
-        if (typeof db !== "undefined" && db.saveSettings) await db.saveSettings({ ...st, adminPin: v });
-        if (typeof showToast === "function") showToast("PIN Admin berhasil disimpan!", "success");
+      document.getElementById('m-pin-save-btn').onclick = async () => {
+        const v = String(document.getElementById('m-pin-cfg')?.value || '').trim();
+        if (v.length < 4) return alert('PIN minimal 4 angka.');
+        const st = typeof db !== 'undefined' && db.getSettings ? (await db.getSettings()) || {} : {};
+        if (typeof db !== 'undefined' && db.saveSettings) await db.saveSettings({ ...st, adminPin: v });
+        if (typeof showToast === 'function') showToast('PIN Admin berhasil disimpan!', 'success');
       };
     }
 
-    const toggleBtns = Array.from(document.querySelectorAll("button")).filter((b) => /^(Nonaktifkan|Aktifkan)$/i.test((b.textContent || "").trim()));
+    const toggleBtns = Array.from(document.querySelectorAll('button')).filter((b) => /^(Nonaktifkan|Aktifkan)$/i.test((b.textContent || '').trim()));
     for (const tb of toggleBtns) {
       const cell = tb.parentElement;
-      if (!cell || cell.querySelector(".m-del-kasir-btn")) continue;
-      const row = cell.closest("tr, div[class*='row'], div[class*='item']") || cell.parentElement;
-      const rTxt = row ? (row.textContent || "") : "";
+      if (!cell || cell.querySelector('.m-del-kasir-btn')) continue;
+      const row = cell.closest('tr, div[class*="row"], div[class*="item"]') || cell.parentElement;
+      const rTxt = row ? (row.textContent || '') : '';
       if (/Admin/i.test(rTxt) && !/Kasir/i.test(rTxt)) continue;
 
       const uMatch = rTxt.match(/@([a-zA-Z0-9_.-]+)/);
-      const uname = uMatch ? uMatch[1] : "kasir";
+      const uname = uMatch ? uMatch[1] : 'kasir';
       const nMatch = rTxt.match(/([^\n@]+)\s*\(@/);
       const dName = nMatch && nMatch[1].trim() ? nMatch[1].trim() : uname;
 
-      const delBtn = document.createElement("button");
-      delBtn.type = "button";
-      delBtn.className = "m-del-kasir-btn";
-      delBtn.textContent = "Hapus";
-      delBtn.style.cssText = "margin-top:6px;width:100%;padding:7px 12px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;";
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'm-del-kasir-btn';
+      delBtn.textContent = 'Hapus';
+      delBtn.style.cssText = 'margin-top:6px;width:100%;padding:7px 12px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;';
       delBtn.onclick = () => {
-        showPinDeleteModal(dName, uname, async () => {
-          const all = typeof db !== "undefined" && db.getAll ? (await db.getAll("users")) || [] : [];
-          const target = all.find((u) => u && u.role === "kasir" && u.username === uname);
-          if (target && target.id !== undefined && db.delete) await db.delete("users", target.id);
-          if (typeof showToast === "function") showToast("Akun kasir " + dName + " berhasil dihapus.", "success");
-          window.dispatchEvent(new HashChangeEvent("hashchange"));
+        showPinModal(dName, uname, async () => {
+          const all = typeof db !== 'undefined' && db.getAll ? (await db.getAll('users')) || [] : [];
+          const target = all.find((u) => u && u.role === 'kasir' && u.username === uname);
+          if (target && target.id !== undefined && db.delete) await db.delete('users', target.id);
+          if (typeof showToast === 'function') showToast('Akun kasir ' + dName + ' berhasil dihapus.', 'success');
+          window.dispatchEvent(new HashChangeEvent('hashchange'));
         });
       };
       cell.appendChild(delBtn);
     }
   }
-  new MutationObserver(mountKasirPinControls).observe(document.documentElement, { childList: true, subtree: true });
-  setTimeout(mountKasirPinControls, 200);
+  new MutationObserver(injectPinControls).observe(document.documentElement, { childList: true, subtree: true });
+  setTimeout(injectPinControls, 200);
 })();
