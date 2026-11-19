@@ -267,7 +267,7 @@ export function renderPosView() {
           <div class="pos-search-bar">
             <input type="text" id="pos-search-input" class="form-control"
               value="${escapeHTML(searchQuery)}"
-              placeholder="Cari menu susu murni (Cokelat, Original, Matcha, Botol)..." />
+              placeholder="Cari menu Susu Murni Mooment (Plain, Coklat, Mocca, Botol)..." />
           </div>
 
           <div class="cat-pills-row">
