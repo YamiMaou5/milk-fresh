@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MILK FRESH POS — Sistem Kasir & Manajemen Kedai Susu Murni</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="css/styles.css?v=38.0" />
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
+</head>
+<body>
+  <!-- Layar Aktivasi & Login -->
+  <div id="login-screen"></div>
+
+  <!-- Kerangka Utama Aplikasi POS -->
+  <div id="app-shell" class="hidden">
+    <div id="sidebar-overlay" class="sidebar-overlay"></div>
+
+    <aside id="app-sidebar">
+      <div class="sidebar-header">
+        <div id="sidebar-logo-box" class="brand-logo">
+          <i data-lucide="milk"></i>
+        </div>
+        <div style="min-width:0;">
+          <div id="sidebar-store-name" class="brand-title">MILK FRESH POS</div>
+          <div class="brand-sub">Point of Sale System</div>
+        </div>
+      </div>
+
+      <nav id="sidebar-nav" class="sidebar-nav"></nav>
+
+      <div class="sidebar-footer">
+        <div class="user-card" title="Klik untuk pengaturan akun & ganti password">
+          <div id="sidebar-user-avatar" class="user-avatar">A</div>
+          <div class="user-info">
+            <span id="sidebar-role-badge" class="user-role-badge">ADMIN</span>
+            <div id="sidebar-user-name" class="user-name">Administrator</div>
+            <div id="sidebar-user-username" class="user-username">@admin</div>
+          </div>
+        </div>
+        <button type="button" id="btn-logout" class="btn btn-outline-danger btn-sm btn-block">
+          <i data-lucide="log-out"></i>
+          <span>Keluar / Logout</span>
+        </button>
+      </div>
+    </aside>
+
+    <div class="app-main">
+      <header class="app-topbar">
+        <div class="topbar-left">
+          <button type="button" id="btn-toggle-sidebar" class="btn btn-outline btn-sm" aria-label="Buka Menu">
+            <i data-lucide="menu"></i>
+          </button>
+          <h2 id="topbar-page-title" class="page-title">Dashboard</h2>
+        </div>
+
+        <div class="topbar-right">
+          <div id="sheets-status-pill" class="status-pill neutral">
+            <i data-lucide="database"></i>
+            <span>Penyimpanan Lokal</span>
+          </div>
+          <div id="topbar-clock" class="topbar-clock">00:00:00</div>
+        </div>
+      </header>
+
+      <main id="app-content"></main>
+    </div>
+  </div>
+
+  <!-- Modal Global, Notifikasi Toast & Area Cetak Struk -->
+  <div id="modal-root" class="hidden"></div>
+  <div id="toast-container"></div>
+  <div id="print-area"></div>
+
+  <script type="module" src="js/app.js?v=38.0"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
