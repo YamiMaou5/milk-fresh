@@ -42,32 +42,29 @@ function buildCompactBrandTopHTML(storeName = 'Susu Murni Mooment', logoDataUrl 
 
 export function renderLoginView(onLoginSuccess) {
   try {
-    if (typeof db !== "undefined") {
+    if (typeof db !== "undefined" && sessionStorage.getItem("open_activation") !== "1") {
       if (typeof db.init === "function") await db.init();
-      const existingUsers = (typeof db.getAll === "function" ? await db.getAll("users") : []) || [];
-      if (!existingUsers.some((u) => u && (u.role === "owner" || u.role === "admin"))) {
-        const pw = typeof hashPassword === "function" ? await hashPassword("owner123") : "owner123";
-        const ownerObj = { id: "usr-owner-1", name: "Owner Mooment", username: "owner", password: pw, passwordHash: pw, role: "owner", email: "owner@mooment.id", active: true };
-        if (typeof db.put === "function") await db.put("users", ownerObj);
-        else if (typeof db.add === "function") await db.add("users", ownerObj);
+      const users = (typeof db.getAll === "function" ? await db.getAll("users") : []) || [];
+      if (!users.some((u) => u && (u.role === "owner" || u.role === "admin"))) {
+        const pwA = typeof hashPassword === "function" ? await hashPassword("owner123") : "owner123";
+        const uOwner = { id: "usr-owner-1", name: "Owner Mooment", username: "owner", password: pwA, passwordHash: pwA, role: "owner", email: "owner@mooment.id", active: true };
+        if (typeof db.put === "function") await db.put("users", uOwner);
+        else if (typeof db.add === "function") await db.add("users", uOwner);
       }
-      if (!existingUsers.some((u) => u && u.role === "kasir")) {
+      if (!users.some((u) => u && u.role === "kasir")) {
         const pwK = typeof hashPassword === "function" ? await hashPassword("kasir123") : "kasir123";
-        const kasirObj = { id: "usr-kasir-1", name: "Sari", username: "kasir", password: pwK, passwordHash: pwK, role: "kasir", active: true };
-        if (typeof db.put === "function") await db.put("users", kasirObj);
-        else if (typeof db.add === "function") await db.add("users", kasirObj);
+        const uKasir = { id: "usr-kasir-1", name: "Sari", username: "kasir", password: pwK, passwordHash: pwK, role: "kasir", active: true };
+        if (typeof db.put === "function") await db.put("users", uKasir);
+        else if (typeof db.add === "function") await db.add("users", uKasir);
       }
       if (typeof db.getSettings === "function" && typeof db.saveSettings === "function") {
         const st = (await db.getSettings()) || {};
         if (!st.storeName || st.storeName === "MILK FRESH POS") {
-          await db.saveSettings({ ...st, storeName: "Susu Murni Mooment", setupCompleted: true, isActivated: true });
+          await db.saveSettings({ ...st, storeName: "Susu Murni Mooment", setupCompleted: true, isActivated: true, activated: true });
         }
       }
     }
-  } catch (e) { console.warn("Init default login:", e); }
-  if (window.__FORCE_ACTIVATION__ && typeof renderSetupView === "function") {
-    return renderSetupView(onLoginSuccess);
-  }
+  } catch (e) { console.warn("Seed login:", e); }
 
   const container = document.getElementById('login-screen');
 
@@ -751,114 +748,57 @@ function openForgotPasswordModal() {
   renderStep1();
 }
 
-/* LOGIN_ACTIVATION_SWITCH_V2 */
-(function initLoginActivationSwitch() {
-  function syncAuthUI() {
-    const root = document.getElementById("app") || document.body;
-    if (!root) return;
-
-    const isActivationScreen = /Buat Profil Toko/i.test(root.textContent || "");
-    const isLoginScreen = /Login Kasir/i.test(root.textContent || "") && /Login Admin/i.test(root.textContent || "");
-
-    // Tambah tombol kembali ke Login saat mode Aktivasi dibuka
-    if (isActivationScreen && !document.getElementById("btn-back-login")) {
-      const form = root.querySelector("form");
-      if (form && form.parentNode) {
-        const nav = document.createElement("div");
-        nav.style.cssText = "margin-bottom:12px;text-align:left;";
-        nav.innerHTML = '<button type="button" id="btn-back-login" style="background:none;border:none;color:#14532d;font-weight:700;font-size:13px;cursor:pointer;padding:4px 0;">&larr; Kembali ke Login Kasir &amp; Admin</button>';
-        form.parentNode.insertBefore(nav, form);
-        document.getElementById("btn-back-login").addEventListener("click", () => {
-          window.__SHOW_ACTIVATION__ = false;
-          window.dispatchEvent(new HashChangeEvent("hashchange"));
-          if (/Buat Profil Toko/i.test(document.body.textContent || "")) window.location.reload();
-        });
-      }
-    }
-
-    // Sematkan opsi Aktivasi Gerai Baru di bagian bawah kartu Login
-    if (isLoginScreen && !document.getElementById("activation-link-box")) {
-      const form = root.querySelector("form");
-      if (form && form.parentNode) {
-        const box = document.createElement("div");
-        box.id = "activation-link-box";
-        box.style.cssText = "margin-top:16px;padding-top:14px;border-top:1px dashed #d1d5db;text-align:center;font-size:12.5px;color:#4b5563;";
-        box.innerHTML = 'Gerai baru belum diaktivasi? <button type="button" id="btn-go-activation" style="background:none;border:none;color:#15803d;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;">Aktivasi Toko &amp; Akun Pemilik</button>';
-        form.parentNode.appendChild(box);
-        document.getElementById("btn-go-activation").addEventListener("click", () => {
-          window.__SHOW_ACTIVATION__ = true;
-          window.dispatchEvent(new HashChangeEvent("hashchange"));
-        });
-      }
-    }
-  }
-
-  const observer = new MutationObserver(() => syncAuthUI());
-  window.addEventListener("DOMContentLoaded", () => {
-    syncAuthUI();
-    observer.observe(document.body, { childList: true, subtree: true });
-  });
-  setTimeout(syncAuthUI, 120);
-})();
-
-/* MOOMENT_LOGIN_ENHANCER_V3 */
+/* MOOMENT_UI_CLEAN_V4 */
 (function () {
-  function enhanceUI() {
-    const root = document.body;
-    if (!root) return;
-    const text = root.textContent || "";
+  function applyUI() {
+    const txt = document.body ? document.body.textContent || "" : "";
 
-    // Saat layar aktivasi dibuka, tambahkan tombol Kembali ke Login di atas
-    if (/Buat Profil Toko/i.test(text) && !document.getElementById("btn-back-login-v3")) {
-      const form = root.querySelector("form");
+    if (/Buat Profil Toko/i.test(txt) && !document.getElementById("btn-back-login-v4")) {
+      const form = document.querySelector("form");
       if (form && form.parentNode) {
         const bar = document.createElement("div");
         bar.style.cssText = "margin-bottom:12px;text-align:left;";
-        bar.innerHTML = '<button type="button" id="btn-back-login-v3" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d;font-weight:700;font-size:12px;padding:6px 12px;border-radius:999px;cursor:pointer;">&larr; Kembali ke Login</button>';
+        bar.innerHTML = '<button type="button" id="btn-back-login-v4" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d;font-weight:700;font-size:12px;padding:6px 12px;border-radius:999px;cursor:pointer;">&larr; Kembali ke Login</button>';
         form.parentNode.insertBefore(bar, form);
-        document.getElementById("btn-back-login-v3").onclick = () => {
-          window.__FORCE_ACTIVATION__ = false;
+        document.getElementById("btn-back-login-v4").onclick = () => {
+          sessionStorage.removeItem("open_activation");
           window.location.reload();
         };
       }
     }
 
-    // Saat di halaman Login, taruh ikon kecil Aktivasi di samping tab Login Admin & di paling bawah
-    if (/Login Admin/i.test(text) && !document.getElementById("btn-act-mini-v3")) {
-      const adminTab = Array.from(root.querySelectorAll("button")).find((b) => /Login Admin/i.test(b.textContent || ""));
+    if (/Login Admin/i.test(txt) && !document.getElementById("btn-mini-act-v4")) {
+      const adminTab = Array.from(document.querySelectorAll("button")).find((b) => /Login Admin/i.test(b.textContent || ""));
       if (adminTab && adminTab.parentNode) {
         const mini = document.createElement("button");
         mini.type = "button";
-        mini.id = "btn-act-mini-v3";
+        mini.id = "btn-mini-act-v4";
         mini.title = "Aktivasi Toko & Akun Pemilik";
         mini.style.cssText = "margin-left:4px;padding:6px 8px;border:1px solid #bbf7d0;background:#ecfdf5;color:#15803d;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:3px;white-space:nowrap;";
         mini.innerHTML = '<span>&#9881;</span><span>Aktivasi</span>';
         adminTab.parentNode.appendChild(mini);
-        mini.onclick = () => {
-          window.__FORCE_ACTIVATION__ = true;
-          const existingSetupBtn = Array.from(root.querySelectorAll("button,a")).find((el) => /aktivasi|setup|profil toko/i.test(el.textContent || "") && el.id !== "btn-act-mini-v3" && el.id !== "btn-act-bot-v3");
-          if (existingSetupBtn) existingSetupBtn.click();
-          else {
-            localStorage.clear();
-            window.location.reload();
-          }
+        mini.onclick = async () => {
+          sessionStorage.setItem("open_activation", "1");
+          try {
+            const dbs = await indexedDB.databases();
+            for (const d of dbs) if (d.name) indexedDB.deleteDatabase(d.name);
+          } catch (_) {}
+          localStorage.clear();
+          window.location.reload();
         };
       }
 
-      const form = root.querySelector("form");
-      if (form && form.parentNode && !document.getElementById("btn-act-bot-v3")) {
-        const footer = document.createElement("div");
-        footer.style.cssText = "margin-top:14px;padding-top:10px;border-top:1px dashed #e5e7eb;text-align:center;font-size:12px;color:#6b7280;";
-        footer.innerHTML = 'Kedai baru? <button type="button" id="btn-act-bot-v3" style="background:none;border:none;color:#15803d;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;">Aktivasi Toko</button>';
-        form.parentNode.appendChild(footer);
-        document.getElementById("btn-act-bot-v3").onclick = () => document.getElementById("btn-act-mini-v3")?.click();
+      const form = document.querySelector("form");
+      if (form && form.parentNode && !document.getElementById("btn-bot-act-v4")) {
+        const bot = document.createElement("div");
+        bot.style.cssText = "margin-top:14px;padding-top:10px;border-top:1px dashed #e5e7eb;text-align:center;font-size:12px;color:#6b7280;";
+        bot.innerHTML = 'Kedai baru? <button type="button" id="btn-bot-act-v4" style="background:none;border:none;color:#15803d;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;">Aktivasi Toko</button>';
+        form.parentNode.appendChild(bot);
+        document.getElementById("btn-bot-act-v4").onclick = () => document.getElementById("btn-mini-act-v4")?.click();
       }
     }
   }
-  const obs = new MutationObserver(enhanceUI);
-  window.addEventListener("DOMContentLoaded", () => {
-    enhanceUI();
-    obs.observe(document.body, { childList: true, subtree: true });
-  });
-  setTimeout(enhanceUI, 150);
+  new MutationObserver(applyUI).observe(document.documentElement, { childList: true, subtree: true });
+  window.addEventListener("DOMContentLoaded", applyUI);
+  setTimeout(applyUI, 200);
 })();
