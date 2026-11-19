@@ -752,116 +752,67 @@ function openForgotPasswordModal() {
   renderStep1();
 }
 
-/* MOOMENT_BOTTOM_ACTIVATION_V8 */
-(function () {
-  function mountUI() {
-    const txt = document.body ? document.body.textContent || "" : "";
 
-    // Tombol kembali saat halaman aktivasi sedang dibuka
-    if (/Buat Profil Toko|Langkah Awal Aktivasi/i.test(txt) && !document.getElementById("btn-back-login-v8")) {
-      const form = document.querySelector("form");
-      if (form && form.parentNode) {
-        const nav = document.createElement("div");
-        nav.style.cssText = "margin-bottom:14px;text-align:left;";
-        nav.innerHTML = '<button type="button" id="btn-back-login-v8" style="background:#f0fdf4;border:1px solid #bbf7d0;color:#14532d;font-weight:700;font-size:12.5px;padding:7px 14px;border-radius:999px;cursor:pointer;">&larr; Kembali ke Halaman Login</button>';
-        form.parentNode.insertBefore(nav, form);
-        document.getElementById("btn-back-login-v8").onclick = () => {
-          sessionStorage.removeItem("mooment_act");
-          window.location.reload();
-        };
-        form.addEventListener("submit", () => sessionStorage.removeItem("mooment_act"));
-      }
-    }
+/* MOOMENT_LOCAL_LOGIN_V1 */
+(function moomentLoginLocal() {
+  let lastSpoken = 0;
 
-    // Keterangan & tombol aktivasi terpisah di paling bawah halaman Login Admin & Kasir
-    if (/Login Admin/i.test(txt) && !/Buat Profil Toko/i.test(txt) && !document.getElementById("mooment-act-footer-v8")) {
-      const form = document.querySelector("form");
-      if (form && form.parentNode) {
-        const box = document.createElement("div");
-        box.id = "mooment-act-footer-v8";
-        box.style.cssText = "margin-top:18px;padding:14px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;text-align:center;";
-        box.innerHTML =
-          '<p style="margin:0 0 9px;font-size:12px;color:#475569;line-height:1.45;">Baru pertama kali menggunakan sistem atau ingin mendaftarkan gerai baru?</p>' +
-          '<button type="button" id="btn-open-act-v8" style="width:100%;padding:9px 14px;background:#ffffff;color:#15803d;border:1.5px solid #16a34a;border-radius:10px;font-size:12.5px;font-weight:700;cursor:pointer;">Aktivasi Toko &amp; Akun Pemilik</button>';
-        form.parentNode.appendChild(box);
-        document.getElementById("btn-open-act-v8").onclick = () => {
-          sessionStorage.setItem("mooment_act", "1");
-          window.location.reload();
-        };
-      }
-    }
-  }
-  new MutationObserver(mountUI).observe(document.documentElement, { childList: true, subtree: true });
-  window.addEventListener("DOMContentLoaded", mountUI);
-  setTimeout(mountUI, 150);
-})();
-
-/* MOOMENT_LOGIN_VOICE_ALERT_V53 */
-(function initLoginErrorFeedback() {
-  let lastSpokenAt = 0;
-
-  function triggerWrongLoginAlert(customText) {
+  function fireWrongCredentialFeedback(customMsg) {
     const now = Date.now();
-    if (now - lastSpokenAt < 1500) return;
-    lastSpokenAt = now;
+    if (now - lastSpoken < 1200) return;
+    lastSpoken = now;
 
-    const message = customText || "Username atau password salah! Silakan periksa kembali.";
-
-    // 1. Tampilkan banner peringatan merah mencolok di form login
-    const form = document.querySelector("form");
+    const msg = customMsg || 'Username atau password salah! Silakan periksa kembali.';
+    const form = document.querySelector('form');
     if (form) {
-      let banner = document.getElementById("mooment-login-alert-banner");
+      let banner = document.getElementById('m-login-err-box');
       if (!banner) {
-        banner = document.createElement("div");
-        banner.id = "mooment-login-alert-banner";
-        banner.style.cssText = "margin:10px 0;padding:11px 13px;background:#fef2f2;border:1.5px solid #f87171;color:#991b1b;border-radius:10px;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:8px;";
-        form.insertBefore(banner, form.querySelector("button[type='submit']") || null);
+        banner = document.createElement('div');
+        banner.id = 'm-login-err-box';
+        banner.style.cssText = 'margin:10px 0;padding:11px 13px;background:#fef2f2;border:1.5px solid #ef4444;color:#991b1b;border-radius:10px;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:8px;';
+        form.insertBefore(banner, form.querySelector('button[type="submit"]') || null);
       }
-      banner.innerHTML = '<span style="font-size:16px;">&#9888;</span><span>' + message + '</span>';
+      banner.innerHTML = '<span style="font-size:16px;">&#9888;</span><span>' + msg + '</span>';
     }
 
-    // 2. Bunyi nada peringatan error (Web Audio API)
     try {
-      const AudioCtx = window.AudioContext || window.webkitAudioContext;
-      if (AudioCtx) {
-        const ctx = new AudioCtx();
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) {
+        const ctx = new Ctx();
+        if (ctx.state === 'suspended') ctx.resume();
         const osc = ctx.createOscillator();
-        const gain = ctx.createGain();
-        osc.type = "triangle";
-        osc.frequency.setValueAtTime(320, ctx.currentTime);
-        osc.frequency.setValueAtTime(220, ctx.currentTime + 0.16);
-        gain.gain.setValueAtTime(0.3, ctx.currentTime);
-        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
-        osc.connect(gain);
-        gain.connect(ctx.destination);
-        osc.start();
-        osc.stop(ctx.currentTime + 0.4);
+        const g = ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(340, ctx.currentTime);
+        osc.frequency.setValueAtTime(210, ctx.currentTime + 0.16);
+        g.gain.setValueAtTime(0.32, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.42);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(); osc.stop(ctx.currentTime + 0.42);
       }
     } catch (_) {}
 
-    // 3. Suara peringatan bahasa Indonesia (SpeechSynthesis)
     try {
-      if ("speechSynthesis" in window) {
+      if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
-        const utter = new SpeechSynthesisUtterance("Username atau password salah, silakan periksa kembali");
-        utter.lang = "id-ID";
-        utter.rate = 1.02;
-        utter.pitch = 1.0;
-        window.speechSynthesis.speak(utter);
+        const u = new SpeechSynthesisUtterance('Username atau password salah, silakan periksa kembali');
+        u.lang = 'id-ID';
+        u.rate = 1.0;
+        window.speechSynthesis.speak(u);
       }
     } catch (_) {}
   }
 
-  // Pantau kemunculan pesan error / toast gagal login
-  new MutationObserver((mutations) => {
-    for (const m of mutations) {
-      for (const node of m.addedNodes) {
-        if (!(node instanceof HTMLElement)) continue;
-        const txt = (node.textContent || "").trim();
-        if (/salah|tidak ditemukan|gagal masuk|invalid/i.test(txt) && document.querySelector("input[type='password']")) {
-          triggerWrongLoginAlert(txt);
-        }
+  document.addEventListener('submit', (e) => {
+    const form = e.target;
+    if (!form || !form.querySelector('input[type="password"]')) return;
+    setTimeout(() => {
+      if (document.querySelector('input[type="password"]')) {
+        const errNode = Array.from(document.querySelectorAll('div, p, span')).find((el) =>
+          el.id !== 'm-login-err-box' && /salah|tidak ditemukan|gagal|invalid|nonaktif/i.test(el.textContent || '') && (el.textContent || '').length < 140
+        );
+        fireWrongCredentialFeedback(errNode ? errNode.textContent.trim() : null);
       }
-    }
-  }).observe(document.documentElement, { childList: true, subtree: true });
+    }, 350);
+  }, true);
 })();

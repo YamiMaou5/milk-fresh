@@ -648,154 +648,108 @@ export function renderPosView() {
 
 
 
-/* MOOMENT_TOPPING_MODAL_V53 */
-(function initMoomentToppingSelector() {
-  const FALLBACK_TOPPINGS = [
-    { id: "add-keju", name: "Keju", price: 2000 },
-    { id: "add-coklat", name: "Coklat", price: 2000 },
-    { id: "add-oreo", name: "Oreo", price: 2000 },
-    { id: "add-rasa", name: "Rasa", price: 2000 }
-  ];
 
-  async function loadToppings() {
+/* MOOMENT_LOCAL_POS_V1 */
+(function moomentPosLocal() {
+  const FALLBACK_TOPPINGS = [
+    { id: 'add-keju', name: 'Keju', price: 2000 },
+    { id: 'add-coklat', name: 'Coklat', price: 2000 },
+    { id: 'add-oreo', name: 'Oreo', price: 2000 },
+    { id: 'add-rasa', name: 'Rasa', price: 2000 }
+  ];
+  const idr = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
+  const parseNum = (s) => parseInt(String(s || '').replace(/[^0-9]/g, ''), 10) || 0;
+
+  async function mountToppings() {
+    const addBtn = Array.from(document.querySelectorAll('button')).find((b) => /Tambah ke Keranjang/i.test(b.textContent || ''));
+    if (!addBtn) return;
+    const modal = addBtn.closest('div[class*="modal"], div[role="dialog"]') || addBtn.parentElement?.parentElement;
+    if (!modal || modal.querySelector('#mooment-topping-box')) return;
+
+    const noteEl = Array.from(modal.querySelectorAll('input, textarea')).find((el) =>
+      /catatan|es dipisah|opsional/i.test((el.placeholder || '') + ' ' + (el.id || ''))
+    );
+    const anchor = noteEl ? (noteEl.closest('div') || noteEl) : addBtn.parentElement;
+    if (!anchor || !anchor.parentNode) return;
+
+    const getQty = () => {
+      const q = Array.from(modal.querySelectorAll('span, div, strong, input')).find((el) => {
+        if (el.closest('#mooment-topping-box')) return false;
+        if (el.children.length > 0 && el.tagName !== 'INPUT') return false;
+        const v = el.tagName === 'INPUT' ? el.value : el.textContent;
+        return /^\s*\d+\s*$/.test(String(v || '')) && Number(v) >= 1 && Number(v) <= 99;
+      });
+      return q ? (Number(q.tagName === 'INPUT' ? q.value : q.textContent) || 1) : 1;
+    };
+
+    const initTotal = parseNum(addBtn.textContent);
+    const basePrice = initTotal > 0 ? Math.round(initTotal / getQty()) : 0;
+    window.__MOOMENT_ADDONS__ = [];
+
+    let list = FALLBACK_TOPPINGS;
     try {
-      if (typeof db !== "undefined" && typeof db.getAll === "function") {
-        let list = await db.getAll("additionals");
-        if (!Array.isArray(list) || list.length === 0) list = await db.getAll("addons");
-        if (Array.isArray(list) && list.length > 0) {
-          return list.filter((x) => x && x.active !== false);
-        }
+      if (typeof db !== 'undefined' && typeof db.getAll === 'function') {
+        let res = await db.getAll('additionals');
+        if (!res || !res.length) res = await db.getAll('addons');
+        if (res && res.length) list = res.filter((x) => x && x.active !== false);
       }
     } catch (_) {}
-    return FALLBACK_TOPPINGS;
-  }
 
-  function parseRupiah(str) {
-    const digits = String(str || "").replace(/[^0-9]/g, "");
-    return digits ? parseInt(digits, 10) : 0;
-  }
-
-  function formatIdr(num) {
-    return "Rp " + Number(num || 0).toLocaleString("id-ID");
-  }
-
-  async function injectToppingUI() {
-    const modalSubmitBtn = Array.from(document.querySelectorAll("button")).find((b) =>
-      /Tambah ke Keranjang/i.test(b.textContent || "")
-    );
-    if (!modalSubmitBtn) return;
-
-    const modalRoot = modalSubmitBtn.closest("div[class*='modal'], div[role='dialog'], .modal-content") || modalSubmitBtn.parentElement?.parentElement;
-    if (!modalRoot || modalRoot.querySelector("#mooment-topping-box")) return;
-
-    // Cari input catatan khusus agar blok topping dipasang tepat di atasnya
-    const noteInput = Array.from(modalRoot.querySelectorAll("input, textarea")).find((el) =>
-      /catatan|es dipisah|opsional/i.test((el.placeholder || "") + " " + (el.id || "") + " " + (el.name || ""))
-    );
-    const targetAnchor = noteInput ? (noteInput.closest("div") || noteInput) : modalSubmitBtn.parentElement;
-    if (!targetAnchor || !targetAnchor.parentNode) return;
-
-    // Simpan harga dasar satuan dari tombol submit saat modal pertama terbuka
-    const initialTotal = parseRupiah(modalSubmitBtn.textContent);
-    const qtyEl = Array.from(modalRoot.querySelectorAll("span, div, strong, input")).find((el) => {
-      if (el.children.length > 0 && el.tagName !== "INPUT") return false;
-      const val = el.tagName === "INPUT" ? el.value : el.textContent;
-      return /^s*d+s*$/.test(String(val || "")) && Number(val) >= 1 && Number(val) <= 99;
-    });
-    const initQty = qtyEl ? Number(qtyEl.tagName === "INPUT" ? qtyEl.value : qtyEl.textContent) || 1 : 1;
-    const baseUnitPrice = initialTotal > 0 ? Math.round(initialTotal / initQty) : 0;
-    modalRoot.dataset.baseUnitPrice = String(baseUnitPrice);
-
-    const toppings = await loadToppings();
-    const box = document.createElement("div");
-    box.id = "mooment-topping-box";
-    box.style.cssText = "margin:12px 0;padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;";
+    const box = document.createElement('div');
+    box.id = 'mooment-topping-box';
+    box.style.cssText = 'margin:12px 0;padding:11px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;';
     box.innerHTML =
-      '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">' +
-        '<span style="font-size:12.5px;font-weight:800;color:#14532d;">Tambahan Topping / Add-ons</span>' +
-        '<span id="mooment-topping-subtotal" style="font-size:11.5px;font-weight:700;color:#15803d;">+Rp 0</span>' +
+      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
+        '<span style="font-size:12.5px;font-weight:800;color:#14532d;">Tambahan Topping (+Rp 2.000)</span>' +
+        '<span id="m-addon-total" style="font-size:11.5px;font-weight:700;color:#15803d;">+Rp 0</span>' +
       '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">' +
-        toppings.map((t) =>
-          '<label style="display:flex;align-items:center;justify-content:space-between;gap:6px;padding:8px 10px;background:#ffffff;border:1.5px solid #d1d5db;border-radius:10px;cursor:pointer;font-size:12.5px;font-weight:600;color:#1f2937;user-select:none;">' +
-            '<span style="display:inline-flex;align-items:center;gap:6px;">' +
-              '<input type="checkbox" class="mooment-addon-cb" data-id="' + t.id + '" data-name="' + t.name + '" data-price="' + (t.price || 2000) + '" style="accent-color:#14532d;width:15px;height:15px;" />' +
+      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">' +
+        list.map((t) =>
+          '<label style="display:flex;align-items:center;justify-content:space-between;padding:7px 9px;background:#fff;border:1.5px solid #d1d5db;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">' +
+            '<span style="display:inline-flex;align-items:center;gap:5px;">' +
+              '<input type="checkbox" class="m-addon-chk" data-id="' + t.id + '" data-name="' + t.name + '" data-price="' + (t.price || 2000) + '" style="accent-color:#14532d;width:15px;height:15px;" />' +
               '<span>' + t.name + '</span>' +
             '</span>' +
-            '<span style="font-size:11.5px;font-weight:700;color:#15803d;">+' + formatIdr(t.price || 2000) + '</span>' +
+            '<span style="color:#15803d;font-weight:700;">+' + idr(t.price || 2000) + '</span>' +
           '</label>'
-        ).join("") +
+        ).join('') +
       '</div>';
+    anchor.parentNode.insertBefore(box, anchor);
 
-    targetAnchor.parentNode.insertBefore(box, targetAnchor);
-
-    function getSelectedAddons() {
-      return Array.from(box.querySelectorAll(".mooment-addon-cb:checked")).map((cb) => ({
-        id: cb.dataset.id,
-        name: cb.dataset.name,
-        price: Number(cb.dataset.price || 2000)
+    const updateModalTotal = () => {
+      const chosen = Array.from(box.querySelectorAll('.m-addon-chk:checked')).map((c) => ({
+        id: c.dataset.id, name: c.dataset.name, price: Number(c.dataset.price || 2000)
       }));
-    }
-
-    function getCurrentQty() {
-      const qNode = Array.from(modalRoot.querySelectorAll("span, div, strong, input")).find((el) => {
-        if (el.closest("#mooment-topping-box")) return false;
-        if (el.children.length > 0 && el.tagName !== "INPUT") return false;
-        const val = el.tagName === "INPUT" ? el.value : el.textContent;
-        return /^s*d+s*$/.test(String(val || "")) && Number(val) >= 1 && Number(val) <= 99;
+      window.__MOOMENT_ADDONS__ = chosen;
+      box.querySelectorAll('label').forEach((l) => {
+        const c = l.querySelector('input');
+        l.style.borderColor = c && c.checked ? '#14532d' : '#d1d5db';
+        l.style.background = c && c.checked ? '#dcfce7' : '#ffffff';
       });
-      return qNode ? (Number(qNode.tagName === "INPUT" ? qNode.value : qNode.textContent) || 1) : 1;
-    }
+      const addUnit = chosen.reduce((s, a) => s + a.price, 0);
+      const q = getQty();
+      const sumEl = document.getElementById('m-addon-total');
+      if (sumEl) sumEl.textContent = '+' + idr(addUnit * q);
+      if (basePrice > 0) addBtn.textContent = 'Tambah ke Keranjang • ' + idr((basePrice + addUnit) * q);
+    };
 
-    function updatePriceDisplay() {
-      const selected = getSelectedAddons();
-      const addonUnitTotal = selected.reduce((sum, a) => sum + a.price, 0);
-      const qty = getCurrentQty();
-      const base = Number(modalRoot.dataset.baseUnitPrice || 0);
-      const grandTotal = (base + addonUnitTotal) * qty;
-
-      box.querySelectorAll("label").forEach((lbl) => {
-        const cb = lbl.querySelector("input");
-        lbl.style.borderColor = cb && cb.checked ? "#14532d" : "#d1d5db";
-        lbl.style.background = cb && cb.checked ? "#dcfce7" : "#ffffff";
-      });
-
-      const subEl = document.getElementById("mooment-topping-subtotal");
-      if (subEl) subEl.textContent = "+" + formatIdr(addonUnitTotal * qty);
-
-      if (base > 0) {
-        modalSubmitBtn.textContent = "Tambah ke Keranjang • " + formatIdr(grandTotal);
-      }
-      window.__MOOMENT_SELECTED_ADDONS__ = selected;
-    }
-
-    box.addEventListener("change", updatePriceDisplay);
-    modalRoot.addEventListener("click", (ev) => {
-      if (ev.target && ev.target.closest("button") && ev.target.closest("button") !== modalSubmitBtn) {
-        setTimeout(updatePriceDisplay, 30);
-      }
+    box.addEventListener('change', updateModalTotal);
+    modal.addEventListener('click', (e) => {
+      if (e.target.closest('button') && e.target.closest('button') !== addBtn) setTimeout(updateModalTotal, 30);
     });
-
-    // Sebelum tombol Tambah ke Keranjang diproses handler asli, sisipkan info topping ke catatan & harga
-    modalSubmitBtn.addEventListener("click", () => {
-      const selected = getSelectedAddons();
-      window.__MOOMENT_SELECTED_ADDONS__ = selected;
-      if (selected.length > 0 && noteInput) {
-        const addonText = "Topping: " + selected.map((s) => s.name + " (+" + formatIdr(s.price) + ")").join(", ");
-        const curNote = String(noteInput.value || "").trim();
-        if (!curNote.includes("Topping:")) {
-          noteInput.value = curNote ? curNote + " | " + addonText : addonText;
-          noteInput.dispatchEvent(new Event("input", { bubbles: true }));
+    addBtn.addEventListener('click', () => {
+      const chosen = window.__MOOMENT_ADDONS__ || [];
+      if (chosen.length > 0 && noteEl) {
+        const txt = 'Topping: ' + chosen.map((x) => x.name).join(', ');
+        const cur = String(noteEl.value || '').trim();
+        if (!cur.includes('Topping:')) {
+          noteEl.value = cur ? cur + ' | ' + txt : txt;
+          noteEl.dispatchEvent(new Event('input', { bubbles: true }));
         }
       }
+      setTimeout(() => { window.__MOOMENT_ADDONS__ = []; }, 200);
     }, true);
   }
-
-  // Pastikan harga item di keranjang ikut menjumlahkan topping yang dipilih
-  if (typeof db !== "undefined" && typeof db.put === "function" && !db.__moomentAddonWrapped) {
-    db.__moomentAddonWrapped = true;
-  }
-
-  new MutationObserver(() => { injectToppingUI(); }).observe(document.documentElement, { childList: true, subtree: true });
-  setTimeout(injectToppingUI, 250);
+  new MutationObserver(mountToppings).observe(document.documentElement, { childList: true, subtree: true });
+  setTimeout(mountToppings, 200);
 })();

@@ -76,7 +76,7 @@ export function renderSettingsView() {
         return;
       }
 
-      (user.fullName || user.name || user.username || "Kasir") = newName;
+      user.fullName = newName;
       user.username = newUser;
       user.email = newEmail;
       user.whatsapp = newWa;
@@ -449,170 +449,146 @@ export function renderSettingsView() {
 
 
 
-/* MOOMENT_SETTINGS_PIN_DELETE_V53 */
-(function initKasirDeleteWithPinAndPinSetting() {
-  function playErrorAlert(msg) {
+
+/* MOOMENT_LOCAL_SETTINGS_V1 */
+(function moomentSettingsLocal() {
+  function playPinError(msg) {
     try {
-      const ctx = new (window.AudioContext || window.webkitAudioContext)();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.type = "sawtooth";
-      osc.frequency.setValueAtTime(220, ctx.currentTime);
-      osc.frequency.setValueAtTime(160, ctx.currentTime + 0.15);
-      gain.gain.setValueAtTime(0.25, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start();
-      osc.stop(ctx.currentTime + 0.35);
+      const Ctx = window.AudioContext || window.webkitAudioContext;
+      if (Ctx) {
+        const ctx = new Ctx();
+        if (ctx.state === 'suspended') ctx.resume();
+        const osc = ctx.createOscillator();
+        const g = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(220, ctx.currentTime);
+        osc.frequency.setValueAtTime(160, ctx.currentTime + 0.15);
+        g.gain.setValueAtTime(0.28, ctx.currentTime);
+        g.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.35);
+        osc.connect(g); g.connect(ctx.destination);
+        osc.start(); osc.stop(ctx.currentTime + 0.35);
+      }
     } catch (_) {}
     try {
-      if ("speechSynthesis" in window) {
+      if ('speechSynthesis' in window) {
         window.speechSynthesis.cancel();
         const u = new SpeechSynthesisUtterance(msg);
-        u.lang = "id-ID";
+        u.lang = 'id-ID';
         window.speechSynthesis.speak(u);
       }
     } catch (_) {}
   }
 
-  function openPinDeleteModal(kasirName, kasirUsername, onSuccess) {
-    document.getElementById("mooment-pin-modal")?.remove();
-    const overlay = document.createElement("div");
-    overlay.id = "mooment-pin-modal";
-    overlay.style.cssText = "position:fixed;inset:0;background:rgba(15,23,42,0.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999;";
-    overlay.innerHTML =
-      '<div style="width:100%;max-width:380px;background:#ffffff;border-radius:18px;padding:22px;box-shadow:0 20px 40px rgba(0,0,0,0.2);">' +
+  function showPinModal(displayName, username, onConfirmed) {
+    document.getElementById('m-pin-modal')?.remove();
+    const ov = document.createElement('div');
+    ov.id = 'm-pin-modal';
+    ov.style.cssText = 'position:fixed;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:9999;';
+    ov.innerHTML =
+      '<div style="width:100%;max-width:370px;background:#fff;border-radius:18px;padding:22px;box-shadow:0 20px 40px rgba(0,0,0,.22);">' +
         '<h3 style="margin:0 0 6px;font-size:17px;font-weight:800;color:#991b1b;">Hapus Akun Kasir</h3>' +
-        '<p style="margin:0 0 14px;font-size:13px;color:#475569;line-height:1.45;">Masukkan <strong>PIN Keamanan Admin</strong> untuk menghapus akun kasir <strong>' + kasirName + ' (@' + kasirUsername + ')</strong> secara permanen.</p>' +
-        '<input type="password" id="mooment-verify-pin-input" inputmode="numeric" maxlength="8" placeholder="Masukkan PIN Admin (default: 123456)" style="width:100%;padding:11px 12px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:15px;letter-spacing:3px;text-align:center;box-sizing:border-box;margin-bottom:8px;" />' +
-        '<div id="mooment-pin-err" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:12px;padding:8px 10px;border-radius:8px;margin-bottom:10px;"></div>' +
-        '<div style="display:flex;gap:8px;margin-top:8px;">' +
-          '<button type="button" id="mooment-pin-cancel" style="flex:1;padding:10px;background:#f1f5f9;color:#334155;border:none;border-radius:10px;font-weight:700;cursor:pointer;">Batal</button>' +
-          '<button type="button" id="mooment-pin-confirm" style="flex:1;padding:10px;background:#dc2626;color:#ffffff;border:none;border-radius:10px;font-weight:700;cursor:pointer;">Hapus Akun</button>' +
+        '<p style="margin:0 0 12px;font-size:12.5px;color:#475569;">Masukkan <strong>PIN Admin</strong> untuk menghapus akun <strong>' + displayName + ' (@' + username + ')</strong>.</p>' +
+        '<input type="password" id="m-pin-input" inputmode="numeric" maxlength="8" placeholder="PIN Admin (default: 123456)" style="width:100%;padding:11px;border:1.5px solid #cbd5e1;border-radius:10px;font-size:15px;letter-spacing:3px;text-align:center;box-sizing:border-box;margin-bottom:8px;" />' +
+        '<div id="m-pin-err" style="display:none;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:12px;padding:8px;border-radius:8px;margin-bottom:10px;"></div>' +
+        '<div style="display:flex;gap:8px;">' +
+          '<button type="button" id="m-pin-cancel" style="flex:1;padding:10px;background:#f1f5f9;color:#334155;border:none;border-radius:10px;font-weight:700;cursor:pointer;">Batal</button>' +
+          '<button type="button" id="m-pin-ok" style="flex:1;padding:10px;background:#dc2626;color:#fff;border:none;border-radius:10px;font-weight:700;cursor:pointer;">Hapus Akun</button>' +
         '</div>' +
       '</div>';
-    document.body.appendChild(overlay);
-
-    const inputEl = document.getElementById("mooment-verify-pin-input");
-    const errEl = document.getElementById("mooment-pin-err");
-    inputEl?.focus();
-
-    document.getElementById("mooment-pin-cancel").onclick = () => overlay.remove();
-    document.getElementById("mooment-pin-confirm").onclick = async () => {
-      const entered = String(inputEl?.value || "").trim();
-      let savedPin = "123456";
+    document.body.appendChild(ov);
+    const inp = document.getElementById('m-pin-input');
+    const err = document.getElementById('m-pin-err');
+    inp?.focus();
+    document.getElementById('m-pin-cancel').onclick = () => ov.remove();
+    document.getElementById('m-pin-ok').onclick = async () => {
+      const entered = String(inp?.value || '').trim();
+      let pin = '123456';
       try {
-        if (typeof db !== "undefined" && typeof db.getSettings === "function") {
-          const st = (await db.getSettings()) || {};
-          if (st.adminPin) savedPin = String(st.adminPin).trim();
-        }
+        const st = typeof db !== 'undefined' && db.getSettings ? await db.getSettings() : {};
+        if (st && st.adminPin) pin = String(st.adminPin).trim();
       } catch (_) {}
-
-      if (!entered || entered !== savedPin) {
-        errEl.textContent = "PIN Admin salah! Akun kasir tidak dihapus.";
-        errEl.style.display = "block";
-        playErrorAlert("PIN Admin salah, penghapusan dibatalkan");
+      if (!entered || entered !== pin) {
+        err.textContent = 'PIN Admin salah! Penghapusan akun kasir dibatalkan.';
+        err.style.display = 'block';
+        playPinError('PIN Admin salah, penghapusan dibatalkan');
         return;
       }
-      overlay.remove();
-      await onSuccess();
+      ov.remove();
+      await onConfirmed();
     };
   }
 
-  async function enhanceSettingsAccounts() {
-    const createKasirBtn = Array.from(document.querySelectorAll("button")).find((b) =>
-      /Buat Akun Kasir/i.test(b.textContent || "")
-    );
-    if (!createKasirBtn) return;
+  async function injectPinControls() {
+    const addKasirBtn = Array.from(document.querySelectorAll('button')).find((b) => /Buat Akun Kasir/i.test(b.textContent || ''));
+    if (!addKasirBtn) return;
 
-    const cardRoot = createKasirBtn.closest("div[class*='card'], section, div") || document.body;
+    try {
+      if (typeof db !== 'undefined' && db.getAll && db.put) {
+        const list = (await db.getAll('users')) || [];
+        for (const u of list) {
+          if (u && (!u.fullName || !u.name)) {
+            const fixed = u.fullName || u.name || (u.username === 'kasir' ? 'Sari' : u.username);
+            await db.put('users', { ...u, name: fixed, fullName: fixed });
+          }
+        }
+      }
+    } catch (_) {}
 
-    // 1. Tambahkan kotak pengaturan PIN Admin tepat di bawah tombol Buat Akun Kasir jika belum ada
-    if (!document.getElementById("mooment-admin-pin-bar")) {
-      let currentPin = "123456";
+    if (!document.getElementById('m-pin-bar')) {
+      let pin = '123456';
       try {
-        if (typeof db !== "undefined" && typeof db.getSettings === "function") {
-          const st = (await db.getSettings()) || {};
-          if (st.adminPin) currentPin = st.adminPin;
-        }
+        const st = typeof db !== 'undefined' && db.getSettings ? await db.getSettings() : {};
+        if (st && st.adminPin) pin = st.adminPin;
       } catch (_) {}
-
-      const pinBar = document.createElement("div");
-      pinBar.id = "mooment-admin-pin-bar";
-      pinBar.style.cssText = "margin:12px 0 14px;padding:12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px;";
-      pinBar.innerHTML =
-        '<div style="font-size:12px;color:#334155;"><strong>PIN Hapus Akun Kasir:</strong> <span style="color:#64748b;">(Wajib saat hapus kasir)</span></div>' +
-        '<div style="display:flex;align-items:center;gap:6px;">' +
-          '<input type="text" id="mooment-admin-pin-field" value="' + currentPin + '" maxlength="8" inputmode="numeric" style="width:92px;padding:6px 8px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:700;text-align:center;" />' +
-          '<button type="button" id="mooment-save-pin-btn" style="padding:6px 12px;background:#14532d;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">Simpan PIN</button>' +
+      const bar = document.createElement('div');
+      bar.id = 'm-pin-bar';
+      bar.style.cssText = 'margin:10px 0 14px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap;';
+      bar.innerHTML =
+        '<span style="font-size:12px;color:#334155;"><strong>PIN Hapus Akun Kasir:</strong></span>' +
+        '<div style="display:flex;gap:6px;align-items:center;">' +
+          '<input type="text" id="m-pin-cfg" value="' + pin + '" maxlength="8" inputmode="numeric" style="width:88px;padding:6px;border:1px solid #cbd5e1;border-radius:8px;font-size:13px;font-weight:700;text-align:center;" />' +
+          '<button type="button" id="m-pin-save-btn" style="padding:6px 11px;background:#14532d;color:#fff;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;">Simpan PIN</button>' +
         '</div>';
-      createKasirBtn.parentNode.insertBefore(pinBar, createKasirBtn.nextSibling);
-
-      document.getElementById("mooment-save-pin-btn").onclick = async () => {
-        const val = String(document.getElementById("mooment-admin-pin-field")?.value || "").trim();
-        if (val.length < 4) {
-          alert("PIN minimal 4 angka.");
-          return;
-        }
-        if (typeof db !== "undefined" && typeof db.getSettings === "function" && typeof db.saveSettings === "function") {
-          const st = (await db.getSettings()) || {};
-          await db.saveSettings({ ...st, adminPin: val });
-        }
-        if (typeof showToast === "function") showToast("PIN Keamanan Admin berhasil disimpan!", "success");
-        else alert("PIN Keamanan Admin berhasil disimpan!");
+      addKasirBtn.parentNode.insertBefore(bar, addKasirBtn.nextSibling);
+      document.getElementById('m-pin-save-btn').onclick = async () => {
+        const v = String(document.getElementById('m-pin-cfg')?.value || '').trim();
+        if (v.length < 4) return alert('PIN minimal 4 angka.');
+        const st = typeof db !== 'undefined' && db.getSettings ? (await db.getSettings()) || {} : {};
+        if (typeof db !== 'undefined' && db.saveSettings) await db.saveSettings({ ...st, adminPin: v });
+        if (typeof showToast === 'function') showToast('PIN Admin berhasil disimpan!', 'success');
       };
     }
 
-    // 2. Tambahkan tombol "Hapus" pada setiap baris akun Kasir (yang memiliki tombol Edit WA / Nonaktifkan / Aktifkan)
-    const actionBtns = Array.from(cardRoot.querySelectorAll("button")).filter((b) =>
-      /^(Nonaktifkan|Aktifkan)$/i.test((b.textContent || "").trim())
-    );
+    const toggleBtns = Array.from(document.querySelectorAll('button')).filter((b) => /^(Nonaktifkan|Aktifkan)$/i.test((b.textContent || '').trim()));
+    for (const tb of toggleBtns) {
+      const cell = tb.parentElement;
+      if (!cell || cell.querySelector('.m-del-kasir-btn')) continue;
+      const row = cell.closest('tr, div[class*="row"], div[class*="item"]') || cell.parentElement;
+      const rTxt = row ? (row.textContent || '') : '';
+      if (/Admin/i.test(rTxt) && !/Kasir/i.test(rTxt)) continue;
 
-    for (const toggleBtn of actionBtns) {
-      const actionCell = toggleBtn.parentElement;
-      if (!actionCell || actionCell.querySelector(".btn-delete-kasir-pin")) continue;
+      const uMatch = rTxt.match(/@([a-zA-Z0-9_.-]+)/);
+      const uname = uMatch ? uMatch[1] : 'kasir';
+      const nMatch = rTxt.match(/([^\n@]+)\s*\(@/);
+      const dName = nMatch && nMatch[1].trim() ? nMatch[1].trim() : uname;
 
-      const row = actionCell.closest("tr, div[class*='row'], div[class*='item']") || actionCell.parentElement;
-      const rowText = row ? (row.textContent || "") : "";
-      if (/Admin/i.test(rowText) && !/Kasir/i.test(rowText)) continue;
-
-      const unameMatch = rowText.match(/@([a-zA-Z0-9_.-]+)/);
-      const username = unameMatch ? unameMatch[1] : "kasir";
-      const nameMatch = rowText.match(/([^
-@]+)s*(@/);
-      const displayName = nameMatch && nameMatch[1].trim() ? nameMatch[1].trim() : username;
-
-      const delBtn = document.createElement("button");
-      delBtn.type = "button";
-      delBtn.className = "btn-delete-kasir-pin";
-      delBtn.textContent = "Hapus";
-      delBtn.style.cssText = "margin-top:6px;width:100%;padding:7px 12px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;";
-
+      const delBtn = document.createElement('button');
+      delBtn.type = 'button';
+      delBtn.className = 'm-del-kasir-btn';
+      delBtn.textContent = 'Hapus';
+      delBtn.style.cssText = 'margin-top:6px;width:100%;padding:7px 12px;background:#fef2f2;color:#dc2626;border:1px solid #fecaca;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;';
       delBtn.onclick = () => {
-        openPinDeleteModal(displayName, username, async () => {
-          try {
-            if (typeof db !== "undefined" && typeof db.getAll === "function" && typeof db.delete === "function") {
-              const allUsers = (await db.getAll("users")) || [];
-              const target = allUsers.find((u) => u && u.role === "kasir" && u.username === username);
-              if (target && target.id !== undefined) {
-                await db.delete("users", target.id);
-              }
-            }
-            if (typeof showToast === "function") {
-              showToast("Akun kasir " + displayName + " berhasil dihapus.", "success");
-            }
-            window.dispatchEvent(new HashChangeEvent("hashchange"));
-          } catch (err) {
-            alert("Gagal menghapus akun kasir: " + (err?.message || err));
-          }
+        showPinModal(dName, uname, async () => {
+          const all = typeof db !== 'undefined' && db.getAll ? (await db.getAll('users')) || [] : [];
+          const target = all.find((u) => u && u.role === 'kasir' && u.username === uname);
+          if (target && target.id !== undefined && db.delete) await db.delete('users', target.id);
+          if (typeof showToast === 'function') showToast('Akun kasir ' + dName + ' berhasil dihapus.', 'success');
+          window.dispatchEvent(new HashChangeEvent('hashchange'));
         });
       };
-
-      actionCell.appendChild(delBtn);
+      cell.appendChild(delBtn);
     }
   }
-
-  new MutationObserver(() => { enhanceSettingsAccounts(); }).observe(document.documentElement, { childList: true, subtree: true });
-  setTimeout(enhanceSettingsAccounts, 250);
+  new MutationObserver(injectPinControls).observe(document.documentElement, { childList: true, subtree: true });
+  setTimeout(injectPinControls, 200);
 })();
