@@ -554,43 +554,159 @@ export const db = new MilkPosDatabase();
 
 
 
+/* MOOMENT_MENU_SYNC_V2 */
+(function setupMoomentCatalog() {
+  const SEED_KEY = "mooment_catalog_applied_v2";
+  const CATEGORIES = [
+    { id: "cat-botol", name: "Susu Murni Botol" },
+    { id: "cat-orig", name: "Susu Murni Original" },
+    { id: "cat-rasa", name: "Susu Murni Aneka Rasa" }
+  ];
+  const RAW_PRODUCTS = [
+    ["PRD-01", "Plain Botol 500 ml", "Susu Murni Botol", "500 ML", 15000, 9000, 30],
+    ["PRD-02", "Plain Botol 1000 ml", "Susu Murni Botol", "1000 ML", 28000, 17000, 25],
+    ["PRD-03", "Coklat Botol 500 ml", "Susu Murni Botol", "500 ML", 17000, 10500, 30],
+    ["PRD-04", "Coklat Botol 1000 ml", "Susu Murni Botol", "1000 ML", 32000, 20000, 25],
+    ["PRD-05", "Plain Kecil", "Susu Murni Original", "KECIL", 7000, 4000, 50],
+    ["PRD-06", "Plain Besar", "Susu Murni Original", "BESAR", 9000, 5500, 50],
+    ["PRD-07", "Coklat Kecil", "Susu Murni Aneka Rasa", "KECIL", 7000, 4500, 50],
+    ["PRD-08", "Coklat Besar", "Susu Murni Aneka Rasa", "BESAR", 9000, 6000, 50],
+    ["PRD-09", "Strawberry Kecil", "Susu Murni Aneka Rasa", "KECIL", 7000, 4500, 50],
+    ["PRD-10", "Strawberry Besar", "Susu Murni Aneka Rasa", "BESAR", 9000, 6000, 50],
+    ["PRD-11", "Vanilla Kecil", "Susu Murni Aneka Rasa", "KECIL", 7000, 4500, 50],
+    ["PRD-12", "Vanilla Besar", "Susu Murni Aneka Rasa", "BESAR", 9000, 6000, 50],
+    ["PRD-13", "Anggur Kecil", "Susu Murni Aneka Rasa", "KECIL", 7000, 4500, 50],
+    ["PRD-14", "Anggur Besar", "Susu Murni Aneka Rasa", "BESAR", 9000, 6000, 50],
+    ["PRD-15", "Blueberry Kecil", "Susu Murni Aneka Rasa", "KECIL", 7000, 4500, 50],
+    ["PRD-16", "Blueberry Besar", "Susu Murni Aneka Rasa", "BESAR", 9000, 6000, 50],
+    ["PRD-17", "Melon Kecil", "Susu Murni Aneka Rasa", "KECIL", 7000, 4500, 50],
+    ["PRD-18", "Melon Besar", "Susu Murni Aneka Rasa", "BESAR", 9000, 6000, 50],
+    ["PRD-19", "Madu Kecil", "Susu Murni Aneka Rasa", "KECIL", 7000, 4500, 50],
+    ["PRD-20", "Madu Besar", "Susu Murni Aneka Rasa", "BESAR", 9000, 6000, 50],
+    ["PRD-21", "Mocca Kecil", "Susu Murni Aneka Rasa", "KECIL", 7000, 4500, 50],
+    ["PRD-22", "Mocca Besar", "Susu Murni Aneka Rasa", "BESAR", 9000, 6000, 50]
+  ];
+  const RAW_ADDONS = [
+    ["ADD-01", "Keju", 2000, 1000, 100],
+    ["ADD-02", "Coklat", 2000, 1000, 100],
+    ["ADD-03", "Oreo", 2000, 1000, 100],
+    ["ADD-04", "Rasa", 2000, 1000, 100]
+  ];
+  function forceMoomentData() {
+    if (typeof db === "undefined" || !db || !db.data) return;
+    const prods = Array.isArray(db.data.products) ? db.data.products : [];
+    const hasOld = prods.some((p) => /Matcha|Taro/i.test(p.name || p.nama || ""));
+    const hasNew = prods.some((p) => (p.name || p.nama) === "Plain Botol 500 ml");
+    if (localStorage.getItem(SEED_KEY) === "1" && !hasOld && hasNew) return;
+    const catStr = Array.isArray(db.data.categories) && typeof db.data.categories[0] === "string";
+    db.data.categories = catStr ? CATEGORIES.map((c) => c.name) : CATEGORIES;
+    db.data.products = RAW_PRODUCTS.map(([id, name, category, size, price, modal, stok], i) => ({
+      id, code: "MM-" + String(i + 1).padStart(3, "0"), kode: "MM-" + String(i + 1).padStart(3, "0"),
+      name, nama: name, category, kategori: category, size, ukuran: size, variant: size,
+      price, harga: price, hargaJual: price, modal, hargaModal: modal, hpp: modal,
+      stok, stock: stok, minStok: 5, isActive: true, active: true
+    }));
+    db.data.additionals = RAW_ADDONS.map(([id, name, price, modal, stok]) => ({
+      id, name, nama: name, price, harga: price, modal, hargaModal: modal, stok, stock: stok, isActive: true, active: true
+    }));
+    if (db.data.settings) {
+      if ("storeName" in db.data.settings) db.data.settings.storeName = "Susu Murni Mooment";
+      if ("namaToko" in db.data.settings) db.data.settings.namaToko = "Susu Murni Mooment";
+    }
+    if (typeof db.save === "function") db.save();
+    localStorage.setItem(SEED_KEY, "1");
+  }
+  if (typeof db !== "undefined" && db) {
+    for (const fnName of ["init", "load"]) {
+      if (typeof db[fnName] === "function") {
+        const orig = db[fnName].bind(db);
+        db[fnName] = function (...args) {
+          const r = orig(...args);
+          if (r && typeof r.then === "function") return r.then((v) => { forceMoomentData(); return v; });
+          forceMoomentData();
+          return r;
+        };
+      }
+    }
+  }
+  forceMoomentData();
+})();
 
-/* MOOMENT_LOCAL_DB_V1 */
-(async function moomentDbLocal() {
+/* MOOMENT_CLEAN_DB_V60 */
+(async function () {
   try {
-    if (typeof db === 'undefined') return;
-    if (typeof db.init === 'function') await db.init();
-    if (typeof db.getAll === 'function') {
-      const users = (await db.getAll('users')) || [];
-      const hasNamedKasir = users.some((u) => u && u.role === 'kasir' && (u.fullName || u.name));
+    if (typeof db === "undefined") return;
+    if (typeof db.init === "function") await db.init();
+    const now = new Date().toISOString();
+
+    if (localStorage.getItem("mooment_menu_v60") !== "1") {
+      const cats = [
+        { id: "cat-kecil", name: "Ukuran Kecil", icon: "cup-soda", sortOrder: 1, active: true },
+        { id: "cat-besar", name: "Ukuran Besar", icon: "milk", sortOrder: 2, active: true },
+        { id: "cat-botol", name: "Susu Murni Botol", icon: "wine", sortOrder: 3, active: true }
+      ];
+      const prods = [
+        { id: "prd-plain-500", name: "Plain Botol 500 ml", categoryId: "cat-botol", category: "Susu Murni Botol", variant: "500 ml", size: "500 ml", price: 12000, cost: 7000, stock: 30, minStock: 5, unit: "botol", active: true, createdAt: now },
+        { id: "prd-plain-1000", name: "Plain Botol 1000 ml", categoryId: "cat-botol", category: "Susu Murni Botol", variant: "1000 ml", size: "1000 ml", price: 20000, cost: 13000, stock: 25, minStock: 5, unit: "botol", active: true, createdAt: now },
+        { id: "prd-coklat-500", name: "Coklat Botol 500 ml", categoryId: "cat-botol", category: "Susu Murni Botol", variant: "500 ml", size: "500 ml", price: 13000, cost: 8000, stock: 30, minStock: 5, unit: "botol", active: true, createdAt: now },
+        { id: "prd-coklat-1000", name: "Coklat Botol 1000 ml", categoryId: "cat-botol", category: "Susu Murni Botol", variant: "1000 ml", size: "1000 ml", price: 22000, cost: 14000, stock: 25, minStock: 5, unit: "botol", active: true, createdAt: now },
+        { id: "prd-plain-kecil", name: "Plain Kecil", categoryId: "cat-kecil", category: "Ukuran Kecil", variant: "Kecil", size: "Kecil", price: 7000, cost: 4000, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-coklat-kecil", name: "Coklat Kecil", categoryId: "cat-kecil", category: "Ukuran Kecil", variant: "Kecil", size: "Kecil", price: 7000, cost: 4200, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-strawberry-kecil", name: "Strawberry Kecil", categoryId: "cat-kecil", category: "Ukuran Kecil", variant: "Kecil", size: "Kecil", price: 7000, cost: 4200, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-vanilla-kecil", name: "Vanilla Kecil", categoryId: "cat-kecil", category: "Ukuran Kecil", variant: "Kecil", size: "Kecil", price: 7000, cost: 4200, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-anggur-kecil", name: "Anggur Kecil", categoryId: "cat-kecil", category: "Ukuran Kecil", variant: "Kecil", size: "Kecil", price: 7000, cost: 4200, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-blueberry-kecil", name: "Blueberry Kecil", categoryId: "cat-kecil", category: "Ukuran Kecil", variant: "Kecil", size: "Kecil", price: 7000, cost: 4200, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-melon-kecil", name: "Melon Kecil", categoryId: "cat-kecil", category: "Ukuran Kecil", variant: "Kecil", size: "Kecil", price: 7000, cost: 4200, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-madu-kecil", name: "Madu Kecil", categoryId: "cat-kecil", category: "Ukuran Kecil", variant: "Kecil", size: "Kecil", price: 7000, cost: 4500, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-mocca-kecil", name: "Mocca Kecil", categoryId: "cat-kecil", category: "Ukuran Kecil", variant: "Kecil", size: "Kecil", price: 7000, cost: 4200, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-plain-besar", name: "Plain Besar", categoryId: "cat-besar", category: "Ukuran Besar", variant: "Besar", size: "Besar", price: 9000, cost: 5500, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-coklat-besar", name: "Coklat Besar", categoryId: "cat-besar", category: "Ukuran Besar", variant: "Besar", size: "Besar", price: 9000, cost: 5800, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-strawberry-besar", name: "Strawberry Besar", categoryId: "cat-besar", category: "Ukuran Besar", variant: "Besar", size: "Besar", price: 9000, cost: 5800, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-vanilla-besar", name: "Vanilla Besar", categoryId: "cat-besar", category: "Ukuran Besar", variant: "Besar", size: "Besar", price: 9000, cost: 5800, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-anggur-besar", name: "Anggur Besar", categoryId: "cat-besar", category: "Ukuran Besar", variant: "Besar", size: "Besar", price: 9000, cost: 5800, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-blueberry-besar", name: "BlueBerry Besar", categoryId: "cat-besar", category: "Ukuran Besar", variant: "Besar", size: "Besar", price: 9000, cost: 5800, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-melon-besar", name: "Melon Besar", categoryId: "cat-besar", category: "Ukuran Besar", variant: "Besar", size: "Besar", price: 9000, cost: 5800, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-madu-besar", name: "Madu Besar", categoryId: "cat-besar", category: "Ukuran Besar", variant: "Besar", size: "Besar", price: 9000, cost: 6000, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now },
+        { id: "prd-mocca-besar", name: "Mocca Besar", categoryId: "cat-besar", category: "Ukuran Besar", variant: "Besar", size: "Besar", price: 9000, cost: 5800, stock: 50, minStock: 10, unit: "cup", active: true, createdAt: now }
+      ];
+      const addons = [
+        { id: "add-keju", name: "Keju", price: 2000, cost: 1000, stock: 100, active: true },
+        { id: "add-coklat", name: "Coklat", price: 2000, cost: 1000, stock: 100, active: true },
+        { id: "add-oreo", name: "Oreo", price: 2000, cost: 1000, stock: 100, active: true },
+        { id: "add-rasa", name: "Rasa", price: 2000, cost: 800, stock: 100, active: true }
+      ];
+      const replaceAll = async (store, list) => {
+        try {
+          if (typeof db.clear === "function") await db.clear(store);
+          for (const it of list) await db.put(store, it);
+        } catch (_) {}
+      };
+      await replaceAll("categories", cats);
+      await replaceAll("products", prods);
+      await replaceAll("additionals", addons);
+      await replaceAll("addons", addons);
+      localStorage.setItem("mooment_menu_v60", "1");
+    }
+
+    if (typeof db.getAll === "function") {
+      const users = (await db.getAll("users")) || [];
+      const hasNamed = users.some((u) => u && u.role === "kasir" && (u.fullName || u.name));
       for (const u of users) {
         if (!u) continue;
-        const rawName = String(u.fullName || u.name || '').trim();
-        if (u.role === 'kasir' && !rawName && hasNamedKasir && users.filter((x) => x && x.username === u.username).length > 1) {
-          if (typeof db.delete === 'function') await db.delete('users', u.id);
+        const nm = String(u.fullName || u.name || "").trim();
+        if (u.role === "kasir" && !nm && hasNamed && users.filter((x) => x && x.username === u.username).length > 1) {
+          if (typeof db.delete === "function") await db.delete("users", u.id);
           continue;
         }
-        const safeName = rawName || (u.username === 'owner' || u.username === 'maou' ? 'Mahmud' : (u.username === 'kasir' ? 'Sari' : u.username));
-        if (u.name !== safeName || u.fullName !== safeName) {
-          if (typeof db.put === 'function') await db.put('users', { ...u, name: safeName, fullName: safeName });
+        const safe = nm || (u.username === "owner" || u.username === "maou" ? "Mahmud" : (u.username === "kasir" ? "Sari" : u.username));
+        if (u.name !== safe || u.fullName !== safe) {
+          await db.put("users", { ...u, name: safe, fullName: safe });
         }
       }
     }
-    if (typeof db.getSettings === 'function' && typeof db.saveSettings === 'function') {
+    if (typeof db.getSettings === "function" && typeof db.saveSettings === "function") {
       const st = (await db.getSettings()) || {};
-      if (!st.adminPin) await db.saveSettings({ ...st, adminPin: '123456' });
+      if (!st.adminPin) await db.saveSettings({ ...st, adminPin: "123456", storeName: "Susu Murni Mooment" });
     }
-    const addons = [
-      { id: 'add-keju', name: 'Keju', price: 2000, cost: 1000, stock: 100, active: true },
-      { id: 'add-coklat', name: 'Coklat', price: 2000, cost: 1000, stock: 100, active: true },
-      { id: 'add-oreo', name: 'Oreo', price: 2000, cost: 1000, stock: 100, active: true },
-      { id: 'add-rasa', name: 'Rasa', price: 2000, cost: 800, stock: 100, active: true }
-    ];
-    for (const store of ['additionals', 'addons']) {
-      try {
-        const cur = (await db.getAll(store)) || [];
-        if (cur.length === 0) for (const a of addons) await db.put(store, a);
-      } catch (_) {}
-    }
-  } catch (e) { console.warn('DB check:', e); }
+  } catch (_) {}
 })();

@@ -648,108 +648,103 @@ export function renderPosView() {
 
 
 
-
-/* MOOMENT_LOCAL_POS_V1 */
-(function moomentPosLocal() {
-  const FALLBACK_TOPPINGS = [
-    { id: 'add-keju', name: 'Keju', price: 2000 },
-    { id: 'add-coklat', name: 'Coklat', price: 2000 },
-    { id: 'add-oreo', name: 'Oreo', price: 2000 },
-    { id: 'add-rasa', name: 'Rasa', price: 2000 }
+/* MOOMENT_CLEAN_POS_V60 */
+(function () {
+  const TOPPINGS = [
+    { id: "add-keju", name: "Keju", price: 2000 },
+    { id: "add-coklat", name: "Coklat", price: 2000 },
+    { id: "add-oreo", name: "Oreo", price: 2000 },
+    { id: "add-rasa", name: "Rasa", price: 2000 }
   ];
-  const idr = (n) => 'Rp ' + Number(n || 0).toLocaleString('id-ID');
-  const parseNum = (s) => parseInt(String(s || '').replace(/[^0-9]/g, ''), 10) || 0;
+  const idr = (n) => "Rp " + Number(n || 0).toLocaleString("id-ID");
+  const parseNum = (s) => parseInt(String(s || "").replace(/[^0-9]/g, ""), 10) || 0;
 
-  async function mountToppings() {
-    const addBtn = Array.from(document.querySelectorAll('button')).find((b) => /Tambah ke Keranjang/i.test(b.textContent || ''));
-    if (!addBtn) return;
-    const modal = addBtn.closest('div[class*="modal"], div[role="dialog"]') || addBtn.parentElement?.parentElement;
-    if (!modal || modal.querySelector('#mooment-topping-box')) return;
-
-    const noteEl = Array.from(modal.querySelectorAll('input, textarea')).find((el) =>
-      /catatan|es dipisah|opsional/i.test((el.placeholder || '') + ' ' + (el.id || ''))
-    );
-    const anchor = noteEl ? (noteEl.closest('div') || noteEl) : addBtn.parentElement;
-    if (!anchor || !anchor.parentNode) return;
-
-    const getQty = () => {
-      const q = Array.from(modal.querySelectorAll('span, div, strong, input')).find((el) => {
-        if (el.closest('#mooment-topping-box')) return false;
-        if (el.children.length > 0 && el.tagName !== 'INPUT') return false;
-        const v = el.tagName === 'INPUT' ? el.value : el.textContent;
-        return /^\s*\d+\s*$/.test(String(v || '')) && Number(v) >= 1 && Number(v) <= 99;
-      });
-      return q ? (Number(q.tagName === 'INPUT' ? q.value : q.textContent) || 1) : 1;
-    };
-
-    const initTotal = parseNum(addBtn.textContent);
-    const basePrice = initTotal > 0 ? Math.round(initTotal / getQty()) : 0;
-    window.__MOOMENT_ADDONS__ = [];
-
-    let list = FALLBACK_TOPPINGS;
+  function mountPosToppings() {
     try {
-      if (typeof db !== 'undefined' && typeof db.getAll === 'function') {
-        let res = await db.getAll('additionals');
-        if (!res || !res.length) res = await db.getAll('addons');
-        if (res && res.length) list = res.filter((x) => x && x.active !== false);
-      }
-    } catch (_) {}
+      const addBtn = Array.from(document.querySelectorAll("button")).find((b) => /Tambah ke Keranjang/i.test(b.textContent || ""));
+      if (!addBtn) return;
+      const modal = addBtn.closest("div[class*='modal'], div[role='dialog']") || addBtn.parentElement?.parentElement;
+      if (!modal || modal.querySelector("#m-topping-box")) return;
 
-    const box = document.createElement('div');
-    box.id = 'mooment-topping-box';
-    box.style.cssText = 'margin:12px 0;padding:11px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;';
-    box.innerHTML =
-      '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">' +
-        '<span style="font-size:12.5px;font-weight:800;color:#14532d;">Tambahan Topping (+Rp 2.000)</span>' +
-        '<span id="m-addon-total" style="font-size:11.5px;font-weight:700;color:#15803d;">+Rp 0</span>' +
-      '</div>' +
-      '<div style="display:grid;grid-template-columns:1fr 1fr;gap:7px;">' +
-        list.map((t) =>
-          '<label style="display:flex;align-items:center;justify-content:space-between;padding:7px 9px;background:#fff;border:1.5px solid #d1d5db;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">' +
-            '<span style="display:inline-flex;align-items:center;gap:5px;">' +
-              '<input type="checkbox" class="m-addon-chk" data-id="' + t.id + '" data-name="' + t.name + '" data-price="' + (t.price || 2000) + '" style="accent-color:#14532d;width:15px;height:15px;" />' +
-              '<span>' + t.name + '</span>' +
-            '</span>' +
-            '<span style="color:#15803d;font-weight:700;">+' + idr(t.price || 2000) + '</span>' +
-          '</label>'
-        ).join('') +
-      '</div>';
-    anchor.parentNode.insertBefore(box, anchor);
+      const noteEl = Array.from(modal.querySelectorAll("input, textarea")).find((el) =>
+        /catatan|es dipisah|opsional/i.test((el.placeholder || "") + " " + (el.id || ""))
+      );
+      const anchor = noteEl ? (noteEl.closest("div") || noteEl) : addBtn.parentElement;
+      if (!anchor || !anchor.parentNode) return;
 
-    const updateModalTotal = () => {
-      const chosen = Array.from(box.querySelectorAll('.m-addon-chk:checked')).map((c) => ({
-        id: c.dataset.id, name: c.dataset.name, price: Number(c.dataset.price || 2000)
-      }));
-      window.__MOOMENT_ADDONS__ = chosen;
-      box.querySelectorAll('label').forEach((l) => {
-        const c = l.querySelector('input');
-        l.style.borderColor = c && c.checked ? '#14532d' : '#d1d5db';
-        l.style.background = c && c.checked ? '#dcfce7' : '#ffffff';
+      const getQty = () => {
+        const q = Array.from(modal.querySelectorAll("span, div, strong, input")).find((el) => {
+          if (el.closest("#m-topping-box")) return false;
+          if (el.children.length > 0 && el.tagName !== "INPUT") return false;
+          const v = el.tagName === "INPUT" ? el.value : el.textContent;
+          return /^\s*\d+\s*$/.test(String(v || "")) && Number(v) >= 1 && Number(v) <= 99;
+        });
+        return q ? (Number(q.tagName === "INPUT" ? q.value : q.textContent) || 1) : 1;
+      };
+
+      const initTotal = parseNum(addBtn.textContent);
+      const basePrice = initTotal > 0 ? Math.round(initTotal / getQty()) : 0;
+      window.__MOOMENT_ADDONS__ = [];
+
+      const box = document.createElement("div");
+      box.id = "m-topping-box";
+      box.style.cssText = "margin:10px 0;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;";
+      box.innerHTML =
+        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">' +
+          '<span style="font-size:12px;font-weight:800;color:#14532d;">Tambahan Topping (+Rp 2.000)</span>' +
+          '<span id="m-addon-sub" style="font-size:11.5px;font-weight:700;color:#15803d;">+Rp 0</span>' +
+        '</div>' +
+        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
+          TOPPINGS.map((t) =>
+            '<label style="display:flex;align-items:center;justify-content:space-between;padding:7px 8px;background:#fff;border:1.5px solid #d1d5db;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">' +
+              '<span style="display:inline-flex;align-items:center;gap:5px;">' +
+                '<input type="checkbox" class="m-t-chk" data-id="' + t.id + '" data-name="' + t.name + '" data-price="' + t.price + '" style="accent-color:#14532d;width:15px;height:15px;" />' +
+                '<span>' + t.name + '</span>' +
+              '</span>' +
+              '<span style="color:#15803d;font-weight:700;">+' + idr(t.price) + '</span>' +
+            '</label>'
+          ).join("") +
+        '</div>';
+      anchor.parentNode.insertBefore(box, anchor);
+
+      const recalc = () => {
+        const chosen = Array.from(box.querySelectorAll(".m-t-chk:checked")).map((c) => ({
+          id: c.dataset.id, name: c.dataset.name, price: Number(c.dataset.price || 2000)
+        }));
+        window.__MOOMENT_ADDONS__ = chosen;
+        box.querySelectorAll("label").forEach((l) => {
+          const c = l.querySelector("input");
+          l.style.borderColor = c && c.checked ? "#14532d" : "#d1d5db";
+          l.style.background = c && c.checked ? "#dcfce7" : "#ffffff";
+        });
+        const addUnit = chosen.reduce((s, a) => s + a.price, 0);
+        const q = getQty();
+        const subEl = document.getElementById("m-addon-sub");
+        if (subEl) subEl.textContent = "+" + idr(addUnit * q);
+        if (basePrice > 0) addBtn.textContent = "Tambah ke Keranjang • " + idr((basePrice + addUnit) * q);
+      };
+
+      box.addEventListener("change", recalc);
+      modal.addEventListener("click", (e) => {
+        if (e.target.closest("button") && e.target.closest("button") !== addBtn) setTimeout(recalc, 30);
       });
-      const addUnit = chosen.reduce((s, a) => s + a.price, 0);
-      const q = getQty();
-      const sumEl = document.getElementById('m-addon-total');
-      if (sumEl) sumEl.textContent = '+' + idr(addUnit * q);
-      if (basePrice > 0) addBtn.textContent = 'Tambah ke Keranjang • ' + idr((basePrice + addUnit) * q);
-    };
-
-    box.addEventListener('change', updateModalTotal);
-    modal.addEventListener('click', (e) => {
-      if (e.target.closest('button') && e.target.closest('button') !== addBtn) setTimeout(updateModalTotal, 30);
-    });
-    addBtn.addEventListener('click', () => {
-      const chosen = window.__MOOMENT_ADDONS__ || [];
-      if (chosen.length > 0 && noteEl) {
-        const txt = 'Topping: ' + chosen.map((x) => x.name).join(', ');
-        const cur = String(noteEl.value || '').trim();
-        if (!cur.includes('Topping:')) {
-          noteEl.value = cur ? cur + ' | ' + txt : txt;
-          noteEl.dispatchEvent(new Event('input', { bubbles: true }));
+      addBtn.addEventListener("click", () => {
+        const chosen = window.__MOOMENT_ADDONS__ || [];
+        if (chosen.length > 0 && noteEl) {
+          const txt = "Topping: " + chosen.map((x) => x.name).join(", ");
+          const cur = String(noteEl.value || "").trim();
+          if (!cur.includes("Topping:")) {
+            noteEl.value = cur ? cur + " | " + txt : txt;
+            noteEl.dispatchEvent(new Event("input", { bubbles: true }));
+          }
         }
-      }
-      setTimeout(() => { window.__MOOMENT_ADDONS__ = []; }, 200);
-    }, true);
+        setTimeout(() => { window.__MOOMENT_ADDONS__ = []; }, 200);
+      }, true);
+    } catch (e) {
+      console.warn("Topping UI:", e);
+    }
   }
-  new MutationObserver(mountToppings).observe(document.documentElement, { childList: true, subtree: true });
-  setTimeout(mountToppings, 200);
+
+  new MutationObserver(mountPosToppings).observe(document.documentElement, { childList: true, subtree: true });
+  setTimeout(mountPosToppings, 200);
 })();
