@@ -22,7 +22,7 @@ function evaluatePasswordStrength(pw) {
   return { label: 'Sangat Kuat', color: 'var(--success)', pct: 100 };
 }
 
-function buildCompactBrandTopHTML(storeName = 'MILK FRESH POS', logoDataUrl = '') {
+function buildCompactBrandTopHTML(storeName = 'Susu Murni Mooment', logoDataUrl = '') {
   return `
     <div class="auth-brand-top">
       <div class="auth-brand-logo">
@@ -55,7 +55,7 @@ function renderInitialSetupWizard(container, onLoginSuccess) {
   container.innerHTML = `
     <div class="auth-wrapper">
       <div class="auth-card">
-        ${buildCompactBrandTopHTML('MILK FRESH POS')}
+        ${buildCompactBrandTopHTML('Susu Murni Mooment')}
 
         <div class="auth-header">
           <span class="badge badge-success" style="margin-bottom:5px;">Langkah Awal Aktivasi</span>
@@ -321,11 +321,11 @@ function renderSeparatedLoginScreen(container, onLoginSuccess) {
                 <form id="login-form" autocomplete="off">
                   <div class="form-group">
                     <label class="form-label" for="login-username">
-                      ${isCashierTab ? 'Username / No. WA Kasir' : 'Username atau Gmail Admin'}
+                      ${isCashierTab ? 'Username Kasir' : 'Username atau Gmail Admin'}
                     </label>
                     <input type="text" id="login-username" name="field_u_${portalKey}" class="form-control"
                       value="" autocomplete="off" autocapitalize="none" spellcheck="false"
-                      placeholder="${isCashierTab ? 'Ketik username atau No. WA kasir' : 'Ketik Username atau Gmail admin'}" required />
+                      placeholder="${isCashierTab ? 'Ketik username kasir' : 'Ketik Username atau Gmail admin'}" required />
                   </div>
 
                   <div class="form-group" style="margin-bottom:10px;">
@@ -334,7 +334,7 @@ function renderSeparatedLoginScreen(container, onLoginSuccess) {
                       ${
                         !isCashierTab
                           ? ``
-                          : `<span style="font-size:11px;color:var(--text-muted);">Atau masuk via OTP WhatsApp</span>`
+                          : ``
                       }
                     </div>
                     <div class="password-field-wrap">
@@ -374,7 +374,7 @@ function renderSeparatedLoginScreen(container, onLoginSuccess) {
                     <input type="text" id="otp-identifier" name="field_otp_${portalKey}" class="form-control"
                       value="${escapeHTML(pendingOtpData?.identifier || '')}"
                       autocomplete="off"
-                      placeholder="${isCashierTab ? 'Ketik username atau No. WA kasir' : 'Ketik Username atau Gmail admin'}" required />
+                      placeholder="${isCashierTab ? 'Ketik username kasir' : 'Ketik Username atau Gmail admin'}" required />
                   </div>
                   <button type="submit" id="btn-send-wa-otp" class="btn btn-outline btn-block" style="margin-bottom:12px;">
                     <i data-lucide="send"></i>
@@ -722,3 +722,53 @@ function openForgotPasswordModal() {
 
   renderStep1();
 }
+
+/* LOGIN_ACTIVATION_SWITCH_V2 */
+(function initLoginActivationSwitch() {
+  function syncAuthUI() {
+    const root = document.getElementById("app") || document.body;
+    if (!root) return;
+
+    const isActivationScreen = /Buat Profil Toko/i.test(root.textContent || "");
+    const isLoginScreen = /Login Kasir/i.test(root.textContent || "") && /Login Admin/i.test(root.textContent || "");
+
+    // Tambah tombol kembali ke Login saat mode Aktivasi dibuka
+    if (isActivationScreen && !document.getElementById("btn-back-login")) {
+      const form = root.querySelector("form");
+      if (form && form.parentNode) {
+        const nav = document.createElement("div");
+        nav.style.cssText = "margin-bottom:12px;text-align:left;";
+        nav.innerHTML = '<button type="button" id="btn-back-login" style="background:none;border:none;color:#14532d;font-weight:700;font-size:13px;cursor:pointer;padding:4px 0;">&larr; Kembali ke Login Kasir &amp; Admin</button>';
+        form.parentNode.insertBefore(nav, form);
+        document.getElementById("btn-back-login").addEventListener("click", () => {
+          window.__SHOW_ACTIVATION__ = false;
+          window.dispatchEvent(new HashChangeEvent("hashchange"));
+          if (/Buat Profil Toko/i.test(document.body.textContent || "")) window.location.reload();
+        });
+      }
+    }
+
+    // Sematkan opsi Aktivasi Gerai Baru di bagian bawah kartu Login
+    if (isLoginScreen && !document.getElementById("activation-link-box")) {
+      const form = root.querySelector("form");
+      if (form && form.parentNode) {
+        const box = document.createElement("div");
+        box.id = "activation-link-box";
+        box.style.cssText = "margin-top:16px;padding-top:14px;border-top:1px dashed #d1d5db;text-align:center;font-size:12.5px;color:#4b5563;";
+        box.innerHTML = 'Gerai baru belum diaktivasi? <button type="button" id="btn-go-activation" style="background:none;border:none;color:#15803d;font-weight:700;cursor:pointer;text-decoration:underline;padding:0;">Aktivasi Toko &amp; Akun Pemilik</button>';
+        form.parentNode.appendChild(box);
+        document.getElementById("btn-go-activation").addEventListener("click", () => {
+          window.__SHOW_ACTIVATION__ = true;
+          window.dispatchEvent(new HashChangeEvent("hashchange"));
+        });
+      }
+    }
+  }
+
+  const observer = new MutationObserver(() => syncAuthUI());
+  window.addEventListener("DOMContentLoaded", () => {
+    syncAuthUI();
+    observer.observe(document.body, { childList: true, subtree: true });
+  });
+  setTimeout(syncAuthUI, 120);
+})();
