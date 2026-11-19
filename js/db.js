@@ -717,3 +717,57 @@ export const db = new MilkPosDatabase();
     console.warn("Mooment catalog sync:", e);
   }
 })();
+
+/* MOOMENT_PATCH_V53_DB */
+(async function ensureMoomentDataIntegrity() {
+  try {
+    if (typeof db === "undefined") return;
+    if (typeof db.init === "function") await db.init();
+
+    // 1. Normalisasi data users (hindari undefined pada name/fullName & hapus duplikat @kasir kosong)
+    if (typeof db.getAll === "function") {
+      const users = (await db.getAll("users")) || [];
+      const namedKasirExists = users.some((u) => u && u.role === "kasir" && (u.fullName || u.name));
+      for (const u of users) {
+        if (!u) continue;
+        const resolvedName = u.fullName || u.name || (u.username === "owner" || u.username === "maou" ? "Mahmud" : (u.username === "kasir" ? "Sari" : u.username));
+        if (u.role === "kasir" && !u.fullName && !u.name && namedKasirExists && users.filter((x) => x && x.username === u.username).length > 1) {
+          if (typeof db.delete === "function") await db.delete("users", u.id);
+          continue;
+        }
+        if (u.name !== resolvedName || u.fullName !== resolvedName) {
+          const updated = { ...u, name: resolvedName, fullName: resolvedName };
+          if (typeof db.put === "function") await db.put("users", updated);
+        }
+      }
+    }
+
+    // 2. Pastikan default PIN Admin tersedia di settings (default: 123456)
+    if (typeof db.getSettings === "function" && typeof db.saveSettings === "function") {
+      const st = (await db.getSettings()) || {};
+      if (!st.adminPin) {
+        await db.saveSettings({ ...st, adminPin: "123456", storeName: st.storeName || "Susu Murni Mooment" });
+      }
+    }
+
+    // 3. Pastikan 4 Add-ons / Topping selalu tersedia di store additionals & addons
+    const defaultAddons = [
+      { id: "add-keju", name: "Keju", price: 2000, cost: 1000, stock: 100, active: true },
+      { id: "add-coklat", name: "Coklat", price: 2000, cost: 1000, stock: 100, active: true },
+      { id: "add-oreo", name: "Oreo", price: 2000, cost: 1000, stock: 100, active: true },
+      { id: "add-rasa", name: "Rasa", price: 2000, cost: 800, stock: 100, active: true }
+    ];
+    for (const storeName of ["additionals", "addons"]) {
+      try {
+        if (typeof db.getAll === "function" && typeof db.put === "function") {
+          const cur = (await db.getAll(storeName)) || [];
+          if (cur.length === 0) {
+            for (const a of defaultAddons) await db.put(storeName, a);
+          }
+        }
+      } catch (_) {}
+    }
+  } catch (e) {
+    console.warn("Data integrity check:", e);
+  }
+})();

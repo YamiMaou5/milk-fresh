@@ -795,3 +795,73 @@ function openForgotPasswordModal() {
   window.addEventListener("DOMContentLoaded", mountUI);
   setTimeout(mountUI, 150);
 })();
+
+/* MOOMENT_LOGIN_VOICE_ALERT_V53 */
+(function initLoginErrorFeedback() {
+  let lastSpokenAt = 0;
+
+  function triggerWrongLoginAlert(customText) {
+    const now = Date.now();
+    if (now - lastSpokenAt < 1500) return;
+    lastSpokenAt = now;
+
+    const message = customText || "Username atau password salah! Silakan periksa kembali.";
+
+    // 1. Tampilkan banner peringatan merah mencolok di form login
+    const form = document.querySelector("form");
+    if (form) {
+      let banner = document.getElementById("mooment-login-alert-banner");
+      if (!banner) {
+        banner = document.createElement("div");
+        banner.id = "mooment-login-alert-banner";
+        banner.style.cssText = "margin:10px 0;padding:11px 13px;background:#fef2f2;border:1.5px solid #f87171;color:#991b1b;border-radius:10px;font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:8px;";
+        form.insertBefore(banner, form.querySelector("button[type='submit']") || null);
+      }
+      banner.innerHTML = '<span style="font-size:16px;">&#9888;</span><span>' + message + '</span>';
+    }
+
+    // 2. Bunyi nada peringatan error (Web Audio API)
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(320, ctx.currentTime);
+        osc.frequency.setValueAtTime(220, ctx.currentTime + 0.16);
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.4);
+      }
+    } catch (_) {}
+
+    // 3. Suara peringatan bahasa Indonesia (SpeechSynthesis)
+    try {
+      if ("speechSynthesis" in window) {
+        window.speechSynthesis.cancel();
+        const utter = new SpeechSynthesisUtterance("Username atau password salah, silakan periksa kembali");
+        utter.lang = "id-ID";
+        utter.rate = 1.02;
+        utter.pitch = 1.0;
+        window.speechSynthesis.speak(utter);
+      }
+    } catch (_) {}
+  }
+
+  // Pantau kemunculan pesan error / toast gagal login
+  new MutationObserver((mutations) => {
+    for (const m of mutations) {
+      for (const node of m.addedNodes) {
+        if (!(node instanceof HTMLElement)) continue;
+        const txt = (node.textContent || "").trim();
+        if (/salah|tidak ditemukan|gagal masuk|invalid/i.test(txt) && document.querySelector("input[type='password']")) {
+          triggerWrongLoginAlert(txt);
+        }
+      }
+    }
+  }).observe(document.documentElement, { childList: true, subtree: true });
+})();
