@@ -647,11 +647,7 @@ export function renderPosView() {
 }
 
 
-
-
-
-
-/* MOOMENT_POS_ONLY_V63 */
+/* MOOMENT_PILIH_MENU_V64 */
 (function () {
   const TOPPINGS = [
     { id: "add-keju", name: "Keju", price: 2000 },
@@ -662,7 +658,20 @@ export function renderPosView() {
   const formatRp = (n) => "Rp " + Number(n || 0).toLocaleString("id-ID");
   const parseRp = (s) => parseInt(String(s || "").replace(/[^0-9]/g, ""), 10) || 0;
 
-  function injectToppings() {
+  function ensureScreenUnlocked() {
+    const visibleModal = Array.from(document.querySelectorAll("[role='dialog'], .modal-content, .modal-box, .modal-card")).some((el) => {
+      const rect = el.getBoundingClientRect();
+      const st = getComputedStyle(el);
+      return rect.width > 120 && rect.height > 80 && st.display !== "none" && st.visibility !== "hidden" && st.opacity !== "0";
+    });
+    if (!visibleModal) {
+      document.body.style.overflow = "";
+      document.body.style.pointerEvents = "";
+      document.documentElement.style.overflow = "";
+    }
+  }
+
+  function enhancePilihModal() {
     try {
       const addBtn = Array.from(document.querySelectorAll("button")).find((b) =>
         /Tambah ke Keranjang/i.test(b.textContent || "")
@@ -670,7 +679,7 @@ export function renderPosView() {
       if (!addBtn) return;
 
       const modal = addBtn.closest("div[class*='modal'], div[role='dialog']") || addBtn.parentElement?.parentElement;
-      if (!modal || modal.querySelector("#m-pos-topping-box") || /Tambahan Topping|Pilih Topping/i.test(modal.textContent || "")) {
+      if (!modal || modal.querySelector("#m-pilih-topping-box") || /Tambahan Topping|Pilih Topping/i.test(modal.textContent || "")) {
         return;
       }
 
@@ -681,32 +690,32 @@ export function renderPosView() {
       if (!anchor || !anchor.parentNode) return;
 
       const getQty = () => {
-        const q = Array.from(modal.querySelectorAll("span, div, strong, input")).find((el) => {
-          if (el.closest("#m-pos-topping-box")) return false;
+        const qtyNode = Array.from(modal.querySelectorAll("span, div, strong, input")).find((el) => {
+          if (el.closest("#m-pilih-topping-box")) return false;
           if (el.children.length > 0 && el.tagName !== "INPUT") return false;
           const v = el.tagName === "INPUT" ? el.value : el.textContent;
           return /^\s*\d+\s*$/.test(String(v || "")) && Number(v) >= 1 && Number(v) <= 99;
         });
-        return q ? (Number(q.tagName === "INPUT" ? q.value : q.textContent) || 1) : 1;
+        return qtyNode ? (Number(qtyNode.tagName === "INPUT" ? qtyNode.value : qtyNode.textContent) || 1) : 1;
       };
 
       const initTotal = parseRp(addBtn.textContent);
-      const basePrice = initTotal > 0 ? Math.round(initTotal / getQty()) : 0;
-      window.__MOOMENT_ADDONS__ = [];
+      const baseUnit = initTotal > 0 ? Math.round(initTotal / getQty()) : 0;
+      window.__MOOMENT_ADDON_TOTAL__ = 0;
 
       const box = document.createElement("div");
-      box.id = "m-pos-topping-box";
+      box.id = "m-pilih-topping-box";
       box.style.cssText = "margin:10px 0;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;";
       box.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">' +
           '<span style="font-size:12px;font-weight:800;color:#14532d;">Tambahan Topping (+Rp 2.000)</span>' +
-          '<span id="m-pos-topping-sum" style="font-size:11.5px;font-weight:700;color:#15803d;">+Rp 0</span>' +
+          '<span id="m-pilih-topping-sum" style="font-size:11.5px;font-weight:700;color:#15803d;">+Rp 0</span>' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
           TOPPINGS.map((t) =>
             '<label style="display:flex;align-items:center;justify-content:space-between;padding:7px 8px;background:#fff;border:1.5px solid #d1d5db;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">' +
               '<span style="display:inline-flex;align-items:center;gap:5px;">' +
-                '<input type="checkbox" class="m-pos-tchk" data-id="' + t.id + '" data-name="' + t.name + '" data-price="' + t.price + '" style="accent-color:#14532d;width:15px;height:15px;" />' +
+                '<input type="checkbox" class="m-pilih-chk" data-name="' + t.name + '" data-price="' + t.price + '" style="accent-color:#14532d;width:15px;height:15px;" />' +
                 '<span>' + t.name + '</span>' +
               '</span>' +
               '<span style="color:#15803d;font-weight:700;">+' + formatRp(t.price) + '</span>' +
@@ -716,51 +725,57 @@ export function renderPosView() {
 
       anchor.parentNode.insertBefore(box, anchor);
 
-      const updateSummary = () => {
-        const chosen = Array.from(box.querySelectorAll(".m-pos-tchk:checked")).map((c) => ({
-          id: c.dataset.id,
+      const syncPrice = () => {
+        const checked = Array.from(box.querySelectorAll(".m-pilih-chk:checked")).map((c) => ({
           name: c.dataset.name,
           price: Number(c.dataset.price || 2000)
         }));
-        window.__MOOMENT_ADDONS__ = chosen;
+        const addonUnit = checked.reduce((s, x) => s + x.price, 0);
+        window.__MOOMENT_ADDON_TOTAL__ = addonUnit;
 
         box.querySelectorAll("label").forEach((lbl) => {
-          const chk = lbl.querySelector("input");
-          lbl.style.borderColor = chk && chk.checked ? "#14532d" : "#d1d5db";
-          lbl.style.background = chk && chk.checked ? "#dcfce7" : "#ffffff";
+          const inp = lbl.querySelector("input");
+          lbl.style.borderColor = inp && inp.checked ? "#14532d" : "#d1d5db";
+          lbl.style.background = inp && inp.checked ? "#dcfce7" : "#ffffff";
         });
 
-        const addUnit = chosen.reduce((s, a) => s + a.price, 0);
-        const q = getQty();
-        const sumEl = document.getElementById("m-pos-topping-sum");
-        if (sumEl) sumEl.textContent = "+" + formatRp(addUnit * q);
-        if (basePrice > 0) {
-          addBtn.textContent = "Tambah ke Keranjang • " + formatRp((basePrice + addUnit) * q);
+        const qty = getQty();
+        const sumEl = document.getElementById("m-pilih-topping-sum");
+        if (sumEl) sumEl.textContent = "+" + formatRp(addonUnit * qty);
+        if (baseUnit > 0) {
+          addBtn.textContent = "Tambah ke Keranjang • " + formatRp((baseUnit + addonUnit) * qty);
         }
+        return checked;
       };
 
-      box.addEventListener("change", updateSummary);
+      box.addEventListener("change", syncPrice);
       modal.addEventListener("click", (e) => {
         if (e.target.closest("button") && e.target.closest("button") !== addBtn) {
-          setTimeout(updateSummary, 30);
+          setTimeout(syncPrice, 30);
         }
       });
 
       addBtn.addEventListener("click", () => {
-        const chosen = window.__MOOMENT_ADDONS__ || [];
-        if (chosen.length > 0 && noteInput) {
-          const txt = "Topping: " + chosen.map((x) => x.name).join(", ");
+        const checked = syncPrice();
+        if (checked.length > 0 && noteInput) {
+          const label = "Topping: " + checked.map((x) => x.name).join(", ");
           const cur = String(noteInput.value || "").trim();
           if (!cur.includes("Topping:")) {
-            noteInput.value = cur ? cur + " | " + txt : txt;
+            noteInput.value = cur ? cur + " | " + label : label;
             noteInput.dispatchEvent(new Event("input", { bubbles: true }));
           }
         }
-        setTimeout(() => { window.__MOOMENT_ADDONS__ = []; }, 200);
+        setTimeout(() => {
+          window.__MOOMENT_ADDON_TOTAL__ = 0;
+          ensureScreenUnlocked();
+        }, 200);
       }, true);
     } catch (_) {}
   }
 
-  new MutationObserver(injectToppings).observe(document.documentElement, { childList: true, subtree: true });
-  setTimeout(injectToppings, 200);
+  new MutationObserver(() => {
+    enhancePilihModal();
+    setTimeout(ensureScreenUnlocked, 200);
+  }).observe(document.documentElement, { childList: true, subtree: true });
+  setTimeout(enhancePilihModal, 200);
 })();
