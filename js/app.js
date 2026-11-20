@@ -5,7 +5,7 @@ import {
   refreshIcons,
   showToast,
 } from './utils.js';
-import { renderLoginView } from './views/loginView.js?v=64.0';
+import { renderLoginView } from './views/loginView.js?v=65.0';
 
 const ADMIN_NAV_ITEMS = [
   { section: 'UTAMA', id: 'dashboard', label: 'Dashboard', icon: 'layout-grid' },
@@ -146,57 +146,57 @@ async function navigateTo(route) {
   try {
     switch (currentRoute) {
       case 'dashboard': {
-        const mod = await import('./views/dashboardView.js?v=64.0');
+        const mod = await import('./views/dashboardView.js?v=65.0');
         mod.renderDashboardView();
         break;
       }
       case 'pos': {
-        const mod = await import('./views/posView.js?v=64.0');
+        const mod = await import('./views/posView.js?v=65.0');
         mod.renderPosView();
         break;
       }
       case 'orders': {
-        const mod = await import('./views/ordersView.js?v=64.0');
+        const mod = await import('./views/ordersView.js?v=65.0');
         mod.renderOrdersView();
         break;
       }
       case 'products': {
-        const mod = await import('./views/productsView.js?v=64.0');
+        const mod = await import('./views/productsView.js?v=65.0');
         mod.renderProductsView();
         break;
       }
       case 'additionals': {
-        const mod = await import('./views/additionalsView.js?v=64.0');
+        const mod = await import('./views/additionalsView.js?v=65.0');
         mod.renderAdditionalsView();
         break;
       }
       case 'stock': {
-        const mod = await import('./views/stockView.js?v=64.0');
+        const mod = await import('./views/stockView.js?v=65.0');
         mod.renderStockView();
         break;
       }
       case 'shift': {
-        const mod = await import('./views/cashierShiftView.js?v=64.0');
+        const mod = await import('./views/cashierShiftView.js?v=65.0');
         mod.renderCashierShiftView();
         break;
       }
       case 'expenses': {
-        const mod = await import('./views/expensesView.js?v=64.0');
+        const mod = await import('./views/expensesView.js?v=65.0');
         mod.renderExpensesView();
         break;
       }
       case 'reports': {
-        const mod = await import('./views/reportsView.js?v=64.0');
+        const mod = await import('./views/reportsView.js?v=65.0');
         mod.renderReportsView();
         break;
       }
       case 'settings': {
-        const mod = await import('./views/settingsView.js?v=64.0');
+        const mod = await import('./views/settingsView.js?v=65.0');
         mod.renderSettingsView();
         break;
       }
       default: {
-        const mod = await import('./views/posView.js?v=64.0');
+        const mod = await import('./views/posView.js?v=65.0');
         mod.renderPosView();
       }
     }

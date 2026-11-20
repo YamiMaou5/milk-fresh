@@ -28,7 +28,7 @@ export function renderPosView() {
 
   function getCartTotals() {
     const subtotal = cart.reduce((sum, item) => sum + item.lineSubtotal, 0);
-    const preset = (settings.discountPresets || []).find((d) => d.id === selectedDiscountId);
+    const preset = (settings.discountPresets || []).find((d) => String(d.id) === String(selectedDiscountId));
     let discountAmount = 0;
     if (preset && preset.value > 0) {
       discountAmount =
@@ -79,7 +79,7 @@ export function renderPosView() {
       let extraPerUnit = 0;
       selectedByGroup.forEach((ids) => {
         ids.forEach((id) => {
-          const found = activeAdditionals.find((a) => a.id === id);
+          const found = activeAdditionals.find((a) => String(a.id) === String(id));
           if (found) extraPerUnit += Number(found.price) || 0;
         });
       });
@@ -153,7 +153,7 @@ export function renderPosView() {
         btn.addEventListener('click', () => {
           const grpId = btn.getAttribute('data-opt-group');
           const optId = btn.getAttribute('data-opt-id');
-          const grpMeta = ADDITIONAL_GROUPS.find((x) => x.id === grpId);
+          const grpMeta = ADDITIONAL_GROUPS.find((x) => String(x.id) === String(grpId));
           const current = selectedByGroup.get(grpId) || [];
 
           if (grpMeta?.selectionType === 'single') {
@@ -198,7 +198,7 @@ export function renderPosView() {
         const chosenObjects = [];
         selectedByGroup.forEach((ids) => {
           ids.forEach((id) => {
-            const found = activeAdditionals.find((a) => a.id === id);
+            const found = activeAdditionals.find((a) => String(a.id) === String(id));
             if (found) {
               chosenObjects.push({ id: found.id, name: found.name, price: Number(found.price) || 0 });
             }
@@ -394,7 +394,7 @@ export function renderPosView() {
                       ${(settings.discountPresets || [])
                         .map(
                           (d) => `
-                        <option value="${d.id}" ${d.id === selectedDiscountId ? 'selected' : ''}>
+                        <option value="${d.id}" ${String(d.id) === String(selectedDiscountId) ? 'selected' : ''}>
                           ${escapeHTML(d.label)}
                         </option>
                       `
@@ -501,7 +501,7 @@ export function renderPosView() {
     content.querySelectorAll('[data-prod-id]').forEach((card) => {
       card.addEventListener('click', () => {
         const pid = card.getAttribute('data-prod-id');
-        const prod = db.data.products.find((x) => x.id === pid);
+        const prod = db.data.products.find((x) => String(x.id) === String(pid));
         if (!prod || prod.stok <= 0) {
           showToast('Stok produk ini sedang habis.', 'warning');
           return;
@@ -537,7 +537,7 @@ export function renderPosView() {
       btn.addEventListener('click', () => {
         const idx = Number(btn.getAttribute('data-cart-inc'));
         const item = cart[idx];
-        const prod = db.data.products.find((p) => p.id === item.productId);
+        const prod = db.data.products.find((p) => String(p.id) === String(item.productId));
         const totalUsed = cart.filter((c) => c.productId === item.productId).reduce((s, c) => s + c.qty, 0);
         if (prod && totalUsed >= prod.stok) {
           showToast(`Stok ${prod.name} maksimal ${prod.stok} unit.`, 'warning');
@@ -602,7 +602,7 @@ export function renderPosView() {
         return;
       }
 
-      const preset = (settings.discountPresets || []).find((d) => d.id === selectedDiscountId);
+      const preset = (settings.discountPresets || []).find((d) => String(d.id) === String(selectedDiscountId));
       const orderStatus = paymentState === 'BELUM_BAYAR' ? 'Menunggu pembayaran' : 'Sedang diproses';
 
       try {
@@ -647,7 +647,7 @@ export function renderPosView() {
 }
 
 
-/* MOOMENT_PILIH_MENU_V64 */
+/* MOOMENT_POS_GUARD_V65 */
 (function () {
   const TOPPINGS = [
     { id: "add-keju", name: "Keju", price: 2000 },
@@ -658,20 +658,45 @@ export function renderPosView() {
   const formatRp = (n) => "Rp " + Number(n || 0).toLocaleString("id-ID");
   const parseRp = (s) => parseInt(String(s || "").replace(/[^0-9]/g, ""), 10) || 0;
 
-  function ensureScreenUnlocked() {
-    const visibleModal = Array.from(document.querySelectorAll("[role='dialog'], .modal-content, .modal-box, .modal-card")).some((el) => {
-      const rect = el.getBoundingClientRect();
-      const st = getComputedStyle(el);
-      return rect.width > 120 && rect.height > 80 && st.display !== "none" && st.visibility !== "hidden" && st.opacity !== "0";
-    });
-    if (!visibleModal) {
+  function forceRevealOrUnlockModal() {
+    const overlays = Array.from(document.querySelectorAll("[id*='modal' i], [class*='modal' i], [role='dialog']"));
+    let hasActiveContent = false;
+
+    for (const ov of overlays) {
+      const st = getComputedStyle(ov);
+      const rect = ov.getBoundingClientRect();
+      const isVisible = st.display !== "none" && st.visibility !== "hidden" && rect.width > 150 && rect.height > 150;
+      if (!isVisible) continue;
+
+      const inner = ov.querySelector("div, form");
+      if (inner) {
+        const ist = getComputedStyle(inner);
+        if (ist.display === "none" || ist.visibility === "hidden" || ist.opacity === "0") {
+          inner.style.setProperty("display", "block", "important");
+          inner.style.setProperty("visibility", "visible", "important");
+          inner.style.setProperty("opacity", "1", "important");
+          inner.style.setProperty("transform", "none", "important");
+          inner.style.setProperty("pointer-events", "auto", "important");
+        }
+      }
+
+      if ((ov.textContent || "").trim().length > 15 && ov.querySelector("button, input")) {
+        hasActiveContent = true;
+        ov.style.setProperty("pointer-events", "auto", "important");
+        ov.style.setProperty("z-index", "9999", "important");
+      } else {
+        ov.style.display = "none";
+      }
+    }
+
+    if (!hasActiveContent) {
       document.body.style.overflow = "";
       document.body.style.pointerEvents = "";
       document.documentElement.style.overflow = "";
     }
   }
 
-  function enhancePilihModal() {
+  function injectToppings() {
     try {
       const addBtn = Array.from(document.querySelectorAll("button")).find((b) =>
         /Tambah ke Keranjang/i.test(b.textContent || "")
@@ -679,7 +704,7 @@ export function renderPosView() {
       if (!addBtn) return;
 
       const modal = addBtn.closest("div[class*='modal'], div[role='dialog']") || addBtn.parentElement?.parentElement;
-      if (!modal || modal.querySelector("#m-pilih-topping-box") || /Tambahan Topping|Pilih Topping/i.test(modal.textContent || "")) {
+      if (!modal || modal.querySelector("#m-pos-topping-v65") || /Tambahan Topping|Pilih Topping/i.test(modal.textContent || "")) {
         return;
       }
 
@@ -690,13 +715,13 @@ export function renderPosView() {
       if (!anchor || !anchor.parentNode) return;
 
       const getQty = () => {
-        const qtyNode = Array.from(modal.querySelectorAll("span, div, strong, input")).find((el) => {
-          if (el.closest("#m-pilih-topping-box")) return false;
+        const q = Array.from(modal.querySelectorAll("span, div, strong, input")).find((el) => {
+          if (el.closest("#m-pos-topping-v65")) return false;
           if (el.children.length > 0 && el.tagName !== "INPUT") return false;
           const v = el.tagName === "INPUT" ? el.value : el.textContent;
           return /^\s*\d+\s*$/.test(String(v || "")) && Number(v) >= 1 && Number(v) <= 99;
         });
-        return qtyNode ? (Number(qtyNode.tagName === "INPUT" ? qtyNode.value : qtyNode.textContent) || 1) : 1;
+        return q ? (Number(q.tagName === "INPUT" ? q.value : q.textContent) || 1) : 1;
       };
 
       const initTotal = parseRp(addBtn.textContent);
@@ -704,18 +729,18 @@ export function renderPosView() {
       window.__MOOMENT_ADDON_TOTAL__ = 0;
 
       const box = document.createElement("div");
-      box.id = "m-pilih-topping-box";
+      box.id = "m-pos-topping-v65";
       box.style.cssText = "margin:10px 0;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;";
       box.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">' +
           '<span style="font-size:12px;font-weight:800;color:#14532d;">Tambahan Topping (+Rp 2.000)</span>' +
-          '<span id="m-pilih-topping-sum" style="font-size:11.5px;font-weight:700;color:#15803d;">+Rp 0</span>' +
+          '<span id="m-pos-tsum-v65" style="font-size:11.5px;font-weight:700;color:#15803d;">+Rp 0</span>' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
           TOPPINGS.map((t) =>
             '<label style="display:flex;align-items:center;justify-content:space-between;padding:7px 8px;background:#fff;border:1.5px solid #d1d5db;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">' +
               '<span style="display:inline-flex;align-items:center;gap:5px;">' +
-                '<input type="checkbox" class="m-pilih-chk" data-name="' + t.name + '" data-price="' + t.price + '" style="accent-color:#14532d;width:15px;height:15px;" />' +
+                '<input type="checkbox" class="m-tchk-v65" data-name="' + t.name + '" data-price="' + t.price + '" style="accent-color:#14532d;width:15px;height:15px;" />' +
                 '<span>' + t.name + '</span>' +
               '</span>' +
               '<span style="color:#15803d;font-weight:700;">+' + formatRp(t.price) + '</span>' +
@@ -725,8 +750,8 @@ export function renderPosView() {
 
       anchor.parentNode.insertBefore(box, anchor);
 
-      const syncPrice = () => {
-        const checked = Array.from(box.querySelectorAll(".m-pilih-chk:checked")).map((c) => ({
+      const sync = () => {
+        const checked = Array.from(box.querySelectorAll(".m-tchk-v65:checked")).map((c) => ({
           name: c.dataset.name,
           price: Number(c.dataset.price || 2000)
         }));
@@ -740,7 +765,7 @@ export function renderPosView() {
         });
 
         const qty = getQty();
-        const sumEl = document.getElementById("m-pilih-topping-sum");
+        const sumEl = document.getElementById("m-pos-tsum-v65");
         if (sumEl) sumEl.textContent = "+" + formatRp(addonUnit * qty);
         if (baseUnit > 0) {
           addBtn.textContent = "Tambah ke Keranjang • " + formatRp((baseUnit + addonUnit) * qty);
@@ -748,15 +773,13 @@ export function renderPosView() {
         return checked;
       };
 
-      box.addEventListener("change", syncPrice);
+      box.addEventListener("change", sync);
       modal.addEventListener("click", (e) => {
-        if (e.target.closest("button") && e.target.closest("button") !== addBtn) {
-          setTimeout(syncPrice, 30);
-        }
+        if (e.target.closest("button") && e.target.closest("button") !== addBtn) setTimeout(sync, 30);
       });
 
       addBtn.addEventListener("click", () => {
-        const checked = syncPrice();
+        const checked = sync();
         if (checked.length > 0 && noteInput) {
           const label = "Topping: " + checked.map((x) => x.name).join(", ");
           const cur = String(noteInput.value || "").trim();
@@ -767,15 +790,25 @@ export function renderPosView() {
         }
         setTimeout(() => {
           window.__MOOMENT_ADDON_TOTAL__ = 0;
-          ensureScreenUnlocked();
+          forceRevealOrUnlockModal();
         }, 200);
       }, true);
     } catch (_) {}
   }
 
+  document.addEventListener("click", (e) => {
+    const btn = e.target.closest("button");
+    if (btn && /Pilih/i.test(btn.textContent || "")) {
+      setTimeout(() => {
+        forceRevealOrUnlockModal();
+        injectToppings();
+      }, 90);
+    }
+  }, true);
+
   new MutationObserver(() => {
-    enhancePilihModal();
-    setTimeout(ensureScreenUnlocked, 200);
+    forceRevealOrUnlockModal();
+    injectToppings();
   }).observe(document.documentElement, { childList: true, subtree: true });
-  setTimeout(enhancePilihModal, 200);
+  setTimeout(injectToppings, 200);
 })();
