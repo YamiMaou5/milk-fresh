@@ -647,7 +647,7 @@ export function renderPosView() {
 }
 
 
-/* MOOMENT_POS_GUARD_V65 */
+/* MOOMENT_POS_CLEAN_V66 */
 (function () {
   const TOPPINGS = [
     { id: "add-keju", name: "Keju", price: 2000 },
@@ -658,45 +658,20 @@ export function renderPosView() {
   const formatRp = (n) => "Rp " + Number(n || 0).toLocaleString("id-ID");
   const parseRp = (s) => parseInt(String(s || "").replace(/[^0-9]/g, ""), 10) || 0;
 
-  function forceRevealOrUnlockModal() {
-    const overlays = Array.from(document.querySelectorAll("[id*='modal' i], [class*='modal' i], [role='dialog']"));
-    let hasActiveContent = false;
-
-    for (const ov of overlays) {
-      const st = getComputedStyle(ov);
-      const rect = ov.getBoundingClientRect();
-      const isVisible = st.display !== "none" && st.visibility !== "hidden" && rect.width > 150 && rect.height > 150;
-      if (!isVisible) continue;
-
-      const inner = ov.querySelector("div, form");
-      if (inner) {
-        const ist = getComputedStyle(inner);
-        if (ist.display === "none" || ist.visibility === "hidden" || ist.opacity === "0") {
-          inner.style.setProperty("display", "block", "important");
-          inner.style.setProperty("visibility", "visible", "important");
-          inner.style.setProperty("opacity", "1", "important");
-          inner.style.setProperty("transform", "none", "important");
-          inner.style.setProperty("pointer-events", "auto", "important");
-        }
-      }
-
-      if ((ov.textContent || "").trim().length > 15 && ov.querySelector("button, input")) {
-        hasActiveContent = true;
-        ov.style.setProperty("pointer-events", "auto", "important");
-        ov.style.setProperty("z-index", "9999", "important");
-      } else {
-        ov.style.display = "none";
-      }
-    }
-
-    if (!hasActiveContent) {
+  function unlockIfNoModal() {
+    const visibleDialog = Array.from(document.querySelectorAll("[role='dialog'], .modal-content, .modal-box, .modal-card")).some((el) => {
+      const r = el.getBoundingClientRect();
+      const st = getComputedStyle(el);
+      return r.width > 120 && r.height > 80 && st.display !== "none" && st.visibility !== "hidden" && st.opacity !== "0";
+    });
+    if (!visibleDialog) {
       document.body.style.overflow = "";
       document.body.style.pointerEvents = "";
       document.documentElement.style.overflow = "";
     }
   }
 
-  function injectToppings() {
+  function mountToppingBox() {
     try {
       const addBtn = Array.from(document.querySelectorAll("button")).find((b) =>
         /Tambah ke Keranjang/i.test(b.textContent || "")
@@ -704,7 +679,7 @@ export function renderPosView() {
       if (!addBtn) return;
 
       const modal = addBtn.closest("div[class*='modal'], div[role='dialog']") || addBtn.parentElement?.parentElement;
-      if (!modal || modal.querySelector("#m-pos-topping-v65") || /Tambahan Topping|Pilih Topping/i.test(modal.textContent || "")) {
+      if (!modal || modal.querySelector("#m-pos-topping-v66") || /Tambahan Topping|Pilih Topping/i.test(modal.textContent || "")) {
         return;
       }
 
@@ -716,7 +691,7 @@ export function renderPosView() {
 
       const getQty = () => {
         const q = Array.from(modal.querySelectorAll("span, div, strong, input")).find((el) => {
-          if (el.closest("#m-pos-topping-v65")) return false;
+          if (el.closest("#m-pos-topping-v66")) return false;
           if (el.children.length > 0 && el.tagName !== "INPUT") return false;
           const v = el.tagName === "INPUT" ? el.value : el.textContent;
           return /^\s*\d+\s*$/.test(String(v || "")) && Number(v) >= 1 && Number(v) <= 99;
@@ -729,18 +704,18 @@ export function renderPosView() {
       window.__MOOMENT_ADDON_TOTAL__ = 0;
 
       const box = document.createElement("div");
-      box.id = "m-pos-topping-v65";
+      box.id = "m-pos-topping-v66";
       box.style.cssText = "margin:10px 0;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;";
       box.innerHTML =
         '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">' +
           '<span style="font-size:12px;font-weight:800;color:#14532d;">Tambahan Topping (+Rp 2.000)</span>' +
-          '<span id="m-pos-tsum-v65" style="font-size:11.5px;font-weight:700;color:#15803d;">+Rp 0</span>' +
+          '<span id="m-pos-tsum-v66" style="font-size:11.5px;font-weight:700;color:#15803d;">+Rp 0</span>' +
         '</div>' +
         '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
           TOPPINGS.map((t) =>
             '<label style="display:flex;align-items:center;justify-content:space-between;padding:7px 8px;background:#fff;border:1.5px solid #d1d5db;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">' +
               '<span style="display:inline-flex;align-items:center;gap:5px;">' +
-                '<input type="checkbox" class="m-tchk-v65" data-name="' + t.name + '" data-price="' + t.price + '" style="accent-color:#14532d;width:15px;height:15px;" />' +
+                '<input type="checkbox" class="m-tchk-v66" data-name="' + t.name + '" data-price="' + t.price + '" style="accent-color:#14532d;width:15px;height:15px;" />' +
                 '<span>' + t.name + '</span>' +
               '</span>' +
               '<span style="color:#15803d;font-weight:700;">+' + formatRp(t.price) + '</span>' +
@@ -751,7 +726,7 @@ export function renderPosView() {
       anchor.parentNode.insertBefore(box, anchor);
 
       const sync = () => {
-        const checked = Array.from(box.querySelectorAll(".m-tchk-v65:checked")).map((c) => ({
+        const checked = Array.from(box.querySelectorAll(".m-tchk-v66:checked")).map((c) => ({
           name: c.dataset.name,
           price: Number(c.dataset.price || 2000)
         }));
@@ -765,7 +740,7 @@ export function renderPosView() {
         });
 
         const qty = getQty();
-        const sumEl = document.getElementById("m-pos-tsum-v65");
+        const sumEl = document.getElementById("m-pos-tsum-v66");
         if (sumEl) sumEl.textContent = "+" + formatRp(addonUnit * qty);
         if (baseUnit > 0) {
           addBtn.textContent = "Tambah ke Keranjang • " + formatRp((baseUnit + addonUnit) * qty);
@@ -790,25 +765,15 @@ export function renderPosView() {
         }
         setTimeout(() => {
           window.__MOOMENT_ADDON_TOTAL__ = 0;
-          forceRevealOrUnlockModal();
+          unlockIfNoModal();
         }, 200);
       }, true);
     } catch (_) {}
   }
 
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest("button");
-    if (btn && /Pilih/i.test(btn.textContent || "")) {
-      setTimeout(() => {
-        forceRevealOrUnlockModal();
-        injectToppings();
-      }, 90);
-    }
-  }, true);
-
   new MutationObserver(() => {
-    forceRevealOrUnlockModal();
-    injectToppings();
+    mountToppingBox();
+    setTimeout(unlockIfNoModal, 150);
   }).observe(document.documentElement, { childList: true, subtree: true });
-  setTimeout(injectToppings, 200);
+  setTimeout(mountToppingBox, 200);
 })();

@@ -5,7 +5,7 @@ import { renderAdditionalsView } from './views/additionalsView.js';
 import { renderDashboardView } from './views/dashboardView.js';
 import { renderExpensesView } from './views/expensesView.js';
 import { renderOrdersView } from './views/ordersView.js';
-import { renderPosView } from './views/posView.js?v=65.0';
+import { renderPosView } from './views/posView.js?v=66.0';
 import { renderProductsView } from './views/productsView.js';
 import { renderReportsView } from './views/reportsView.js';
 import { renderSettingsView } from './views/settingsView.js';
