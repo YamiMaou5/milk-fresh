@@ -241,6 +241,34 @@ export function renderPosView() {
   }
 
   function render() {
+    
+    (db.data.products || []).forEach((p) => {
+      if (p.hargaJual == null) p.hargaJual = Number(p.price) || 0;
+      if (p.stok == null) p.stok = p.stock != null ? Number(p.stock) : 50;
+      if (!p.size) p.size = p.variant || "Regular";
+    });
+    const defaultToppings = [
+      { id: "add-keju", group: "topping", name: "Keju", price: 2000, active: true },
+      { id: "add-coklat", group: "topping", name: "Coklat", price: 2000, active: true },
+      { id: "add-oreo", group: "topping", name: "Oreo", price: 2000, active: true },
+      { id: "add-rasa", group: "topping", name: "Rasa", price: 2000, active: true }
+    ];
+    if (!Array.isArray(db.data.additionals)) db.data.additionals = [];
+    defaultToppings.forEach((dt) => {
+      const found = db.data.additionals.find((a) => String(a.id) === dt.id || (a.name || "").toLowerCase() === dt.name.toLowerCase());
+      if (found) {
+        found.group = found.group || "topping";
+        found.active = true;
+      } else {
+        db.data.additionals.push(dt);
+      }
+    });
+    if (typeof ADDITIONAL_GROUPS !== "undefined" && Array.isArray(ADDITIONAL_GROUPS)) {
+      if (!ADDITIONAL_GROUPS.some((g) => g.id === "topping")) {
+        ADDITIONAL_GROUPS.push({ id: "topping", name: "Tambahan Topping", selectionType: "multiple" });
+      }
+    }
+
     const categories = db.data.categories;
     const products = db.data.products.filter((p) => {
       if (!p.active) return false;
@@ -645,135 +673,3 @@ export function renderPosView() {
 
   render();
 }
-
-
-/* MOOMENT_POS_CLEAN_V66 */
-(function () {
-  const TOPPINGS = [
-    { id: "add-keju", name: "Keju", price: 2000 },
-    { id: "add-coklat", name: "Coklat", price: 2000 },
-    { id: "add-oreo", name: "Oreo", price: 2000 },
-    { id: "add-rasa", name: "Rasa", price: 2000 }
-  ];
-  const formatRp = (n) => "Rp " + Number(n || 0).toLocaleString("id-ID");
-  const parseRp = (s) => parseInt(String(s || "").replace(/[^0-9]/g, ""), 10) || 0;
-
-  function unlockIfNoModal() {
-    const visibleDialog = Array.from(document.querySelectorAll("[role='dialog'], .modal-content, .modal-box, .modal-card")).some((el) => {
-      const r = el.getBoundingClientRect();
-      const st = getComputedStyle(el);
-      return r.width > 120 && r.height > 80 && st.display !== "none" && st.visibility !== "hidden" && st.opacity !== "0";
-    });
-    if (!visibleDialog) {
-      document.body.style.overflow = "";
-      document.body.style.pointerEvents = "";
-      document.documentElement.style.overflow = "";
-    }
-  }
-
-  function mountToppingBox() {
-    try {
-      const addBtn = Array.from(document.querySelectorAll("button")).find((b) =>
-        /Tambah ke Keranjang/i.test(b.textContent || "")
-      );
-      if (!addBtn) return;
-
-      const modal = addBtn.closest("div[class*='modal'], div[role='dialog']") || addBtn.parentElement?.parentElement;
-      if (!modal || modal.querySelector("#m-pos-topping-v66") || /Tambahan Topping|Pilih Topping/i.test(modal.textContent || "")) {
-        return;
-      }
-
-      const noteInput = Array.from(modal.querySelectorAll("input, textarea")).find((el) =>
-        /catatan|es dipisah|opsional/i.test((el.placeholder || "") + " " + (el.id || ""))
-      );
-      const anchor = noteInput ? (noteInput.closest("div") || noteInput) : addBtn.parentElement;
-      if (!anchor || !anchor.parentNode) return;
-
-      const getQty = () => {
-        const q = Array.from(modal.querySelectorAll("span, div, strong, input")).find((el) => {
-          if (el.closest("#m-pos-topping-v66")) return false;
-          if (el.children.length > 0 && el.tagName !== "INPUT") return false;
-          const v = el.tagName === "INPUT" ? el.value : el.textContent;
-          return /^\s*\d+\s*$/.test(String(v || "")) && Number(v) >= 1 && Number(v) <= 99;
-        });
-        return q ? (Number(q.tagName === "INPUT" ? q.value : q.textContent) || 1) : 1;
-      };
-
-      const initTotal = parseRp(addBtn.textContent);
-      const baseUnit = initTotal > 0 ? Math.round(initTotal / getQty()) : 0;
-      window.__MOOMENT_ADDON_TOTAL__ = 0;
-
-      const box = document.createElement("div");
-      box.id = "m-pos-topping-v66";
-      box.style.cssText = "margin:10px 0;padding:10px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;";
-      box.innerHTML =
-        '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">' +
-          '<span style="font-size:12px;font-weight:800;color:#14532d;">Tambahan Topping (+Rp 2.000)</span>' +
-          '<span id="m-pos-tsum-v66" style="font-size:11.5px;font-weight:700;color:#15803d;">+Rp 0</span>' +
-        '</div>' +
-        '<div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">' +
-          TOPPINGS.map((t) =>
-            '<label style="display:flex;align-items:center;justify-content:space-between;padding:7px 8px;background:#fff;border:1.5px solid #d1d5db;border-radius:9px;font-size:12px;font-weight:600;cursor:pointer;">' +
-              '<span style="display:inline-flex;align-items:center;gap:5px;">' +
-                '<input type="checkbox" class="m-tchk-v66" data-name="' + t.name + '" data-price="' + t.price + '" style="accent-color:#14532d;width:15px;height:15px;" />' +
-                '<span>' + t.name + '</span>' +
-              '</span>' +
-              '<span style="color:#15803d;font-weight:700;">+' + formatRp(t.price) + '</span>' +
-            '</label>'
-          ).join("") +
-        '</div>';
-
-      anchor.parentNode.insertBefore(box, anchor);
-
-      const sync = () => {
-        const checked = Array.from(box.querySelectorAll(".m-tchk-v66:checked")).map((c) => ({
-          name: c.dataset.name,
-          price: Number(c.dataset.price || 2000)
-        }));
-        const addonUnit = checked.reduce((s, x) => s + x.price, 0);
-        window.__MOOMENT_ADDON_TOTAL__ = addonUnit;
-
-        box.querySelectorAll("label").forEach((lbl) => {
-          const inp = lbl.querySelector("input");
-          lbl.style.borderColor = inp && inp.checked ? "#14532d" : "#d1d5db";
-          lbl.style.background = inp && inp.checked ? "#dcfce7" : "#ffffff";
-        });
-
-        const qty = getQty();
-        const sumEl = document.getElementById("m-pos-tsum-v66");
-        if (sumEl) sumEl.textContent = "+" + formatRp(addonUnit * qty);
-        if (baseUnit > 0) {
-          addBtn.textContent = "Tambah ke Keranjang • " + formatRp((baseUnit + addonUnit) * qty);
-        }
-        return checked;
-      };
-
-      box.addEventListener("change", sync);
-      modal.addEventListener("click", (e) => {
-        if (e.target.closest("button") && e.target.closest("button") !== addBtn) setTimeout(sync, 30);
-      });
-
-      addBtn.addEventListener("click", () => {
-        const checked = sync();
-        if (checked.length > 0 && noteInput) {
-          const label = "Topping: " + checked.map((x) => x.name).join(", ");
-          const cur = String(noteInput.value || "").trim();
-          if (!cur.includes("Topping:")) {
-            noteInput.value = cur ? cur + " | " + label : label;
-            noteInput.dispatchEvent(new Event("input", { bubbles: true }));
-          }
-        }
-        setTimeout(() => {
-          window.__MOOMENT_ADDON_TOTAL__ = 0;
-          unlockIfNoModal();
-        }, 200);
-      }, true);
-    } catch (_) {}
-  }
-
-  new MutationObserver(() => {
-    mountToppingBox();
-    setTimeout(unlockIfNoModal, 150);
-  }).observe(document.documentElement, { childList: true, subtree: true });
-  setTimeout(mountToppingBox, 200);
-})();
